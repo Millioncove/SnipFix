@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Editor Timeline</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <input type="file" id="upload" accept="video/*">
+
+    <div id="SnipFixEditor">
+
+
+        <div id="VideoContainer">
+            <video id="video" playsinline class="play-pause">
+                <source type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div id="ControlsContainer">
+            <button id="EditButton" disabled class="video-processing-starter">Edit</button>
+            <button id="MainPlayPause" disabled class="play-pause">Play</button>
+            <button id="ExportButton" disabled class="video-processing-starter">Export</button>
+        </div>
+
+        <div id="TracksContainer">
+            <div id="TracksTimeline">
+                <input type="range" id="Playhead" class="timeline-slider">
+                <input type="range" id="TimelineStartBound" class="timeline-slider bound">
+                <input type="range" id="TimelineEndBound" class="timeline-slider bound">
+
+                <template id="media-track-template">
+                    <link rel="stylesheet" href="media-track-style.css">
+                    <div id="Track">
+                        <h1 id="TrackName">Track name!</h1>
+                        <div class="clip">
+                            <input type="range" orient="vertical" id="Volume" min="0" max="100">
+                        </div>
+                    </div>
+                    <audio id="audio"></audio>
+                </template>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.10.1/dist/ffmpeg.min.js"></script>
+<script type="module" src="script.js"></script>
+
+</html>

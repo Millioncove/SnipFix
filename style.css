@@ -1,0 +1,175 @@
+html,
+body {
+    margin: 0;
+    height: 100%;
+    /*overflow: hidden;*/
+}
+
+#SnipFixEditor {
+    height: inherit;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /*display: none;*/
+}
+
+#VideoContainer {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+}
+
+#VideoContainer>* {
+    width: 80%;
+}
+
+#ControlsContainer {
+    flex: 1 1 10%;
+    display: flex;
+    justify-content: center;
+    margin: 0.5em;
+    height: 3em;
+}
+
+#ControlsContainer>button {
+    width: 4em;
+    font-size: large;
+    border: none;
+    border-radius: 1em;
+}
+
+#TracksContainer {
+    flex: 8 1 40%;
+    position: relative;
+    background-color: rgba(0, 81, 255, 0.575);
+    display: flex;
+}
+
+#TracksTimeline {
+    flex: 1 1 0%;
+    margin: 1rem 3rem;
+    position: inherit;
+    overflow: auto;
+}
+
+
+media-track {
+    margin: 1rem 0;
+    position: relative;
+    height: 4rem;
+    display: block;
+}
+
+.timeline-slider {
+    position: absolute;
+    appearance: none;
+    background-color: transparent;
+    -webkit-appearance: none;
+    margin: 1rem 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+#Playhead {
+    position: absolute;
+    pointer-events: auto;
+    height: 100%;
+    margin: 0 auto;
+    z-index: 1;
+}
+
+.bound {
+    z-index: 2;
+}
+
+/*Prevent selecting with blue outline.*/
+input[type=range]:focus {
+    outline: none;
+}
+
+/* Slider tracks! */
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8.4px;
+    cursor: pointer;
+    background: transparent;
+    border-radius: 1.3px;
+    border: 0.2px solid #010101;
+}
+
+input[type=range]:focus::-webkit-slider-runnable-track {
+    background: transparent;
+}
+
+input[type=range]::-moz-range-track {
+    appearance: none;
+    color: transparent;
+    width: 100%;
+}
+
+input[type=range]::-ms-track {
+    width: 100%;
+    height: 8.4px;
+    cursor: pointer;
+    background: transparent;
+    border-color: transparent;
+    border-width: 16px 0;
+    color: transparent;
+}
+
+input[type=range]::-ms-fill-lower {
+    background: transparent;
+    border: 0.2px solid #010101;
+    border-radius: 2.6px;
+}
+
+input[type=range]::-ms-fill-upper {
+    background: #3071a9;
+    border: 0.2px solid #010101;
+    border-radius: 2.6px;
+}
+
+input[type=range]:focus::-ms-fill-lower {
+    background: #3071a9;
+}
+
+input[type=range]:focus::-ms-fill-upper {
+    background: #367ebd;
+}
+
+/* Thumbs! */
+input[type=range]::-webkit-slider-thumb {
+    border: 1px solid #000000;
+    height: 36px;
+    width: 16px;
+    border-radius: 3px;
+    background: #ffffff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -14px;
+    pointer-events: auto;
+}
+
+.timeline-slider::-moz-range-thumb {
+    border: none;
+    height: 100%;
+    width: 0.5rem;
+    border-radius: 1rem;
+    background: #ffffff;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+#Playhead::-moz-range-thumb {
+    width: 0.2rem;
+}
+
+input[type=range]::-ms-thumb {
+    border: 1px solid #000000;
+    height: 36px;
+    width: 16px;
+    border-radius: 3px;
+    background: #ffffff;
+    cursor: pointer;
+    pointer-events: auto;
+}
