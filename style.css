@@ -7,20 +7,21 @@ body {
 
 #SnipFixEditor {
     height: inherit;
-    display: flex;
+    display: none;
+    /*display: flex;*/
     flex-direction: column;
     justify-content: center;
-    /*display: none;*/
 }
 
 #VideoContainer {
     flex: 1 1 auto;
     display: flex;
     justify-content: center;
+    min-height: 0;
 }
 
 #VideoContainer>* {
-    width: 80%;
+    width: 100%;
 }
 
 #ControlsContainer {

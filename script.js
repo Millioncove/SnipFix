@@ -6,6 +6,7 @@ const upload = document.getElementById('upload');
 const editButton = document.getElementById('EditButton');
 const exportButton = document.getElementById('ExportButton');
 const video = document.getElementById("video");
+const editor = document.getElementById("SnipFixEditor");
 const programmableStyleSheet = new CSSStyleSheet();
 document.adoptedStyleSheets.push(programmableStyleSheet);
 
@@ -27,6 +28,8 @@ upload.addEventListener('change', async (event) => {
     await snipFix.findKeyframePtsAroundTime(snipFix.timeline.duration, 1)
 
     document.getElementById("MainPlayPause").disabled = false;
+    upload.hidden = true;
+    programmableStyleSheet.replaceSync("#SnipFixEditor { display: flex; }");
 
     // The edit button.
     editButton.addEventListener('click', async () => {
