@@ -143,6 +143,7 @@ export class Timeline {
         this.syncBoundHeightToNumTracks();
         this.colorizeAllClips();
         newMediaTrack.mediaElement.currentTime = this.#currentTime;
+        this.PutVideoTrackOnTop();
         return newMediaTrack;
     }
 
@@ -178,5 +179,17 @@ export class Timeline {
             this.currentFrameIndex = this.startBound.value;
         }
         this.colorizeAllClips();
+    }
+
+    PutVideoTrackOnTop() {
+        console.log(this.allTracks);
+        if (this.videoTrack != null) {
+            //if (this.allTracks[0] != this.videoTrack) {
+            this.allTracks[0].before(this.videoTrack);
+            //}
+
+            this.allTracks.unshift(this.allTracks.splice(this.allTracks.indexOf(this.videoTrack), 1)[0]);
+        }
+        console.log(this.allTracks);
     }
 }

@@ -34,6 +34,7 @@ upload.addEventListener('change', async (event) => {
     // The edit button.
     editButton.addEventListener('click', async () => {
 
+        console.log(snipFix.CalculateTargetBitrateFromVideoLength());
         await snipFix.renderSegmentBetweenBounds();
 
         const data = snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsSilent);

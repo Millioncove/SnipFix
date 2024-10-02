@@ -31,6 +31,7 @@ export class SnipFix {
         segmentBetweenBoundsLoud: "segmentBetweenBoundsLoud.mp4",
         segmentBetweenBoundsLoudCompressed: "segmentBetweenBoundsLoudCompressed.mp4",
     };
+    timeline;
 
     get isBusyProcessing() {
         return this.#currentTask != tasks.NONE;
@@ -204,12 +205,20 @@ export class SnipFix {
         await this.#CompressSegmentBetweenBounds();
     }
 
+    CalculateTargetBitrateFromVideoLength() {
+        const endTime = this.timeline.endBound.value / this.timeline.frameRate;
+        const startTime = this.timeline.startBound.value / this.timeline.frameRate;
+        const trimmedDuration = endTime - startTime;
+
+        return (64 * 1024 * 1024) / trimmedDuration;
+    }
+
     async #CompressSegmentBetweenBounds() {
         this.currentTask = tasks.RENDERING;
         await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsLoud, "-c:v", "libx264", "-crf", "23", "-preset", "medium", this.files.segmentBetweenBoundsLoudCompressed);
         const compressedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoudCompressed);
         const compressedBlob = new Blob([compressedResult.buffer], { type: 'video/mp4' });
-        CreateDownloadLink("mergedAudio.wav", "Download merged audio", URL.createObjectURL(compressedBlob));
+        CreateDownloadLink("Trimmed-video-compressed.mp4", "Download compressed trimmed video!", URL.createObjectURL(compressedBlob));
     }
 
     async #extractAudioStreamFromLoudInput(streamIndex) {
