@@ -215,7 +215,10 @@ export class SnipFix {
 
     async #CompressSegmentBetweenBounds() {
         this.currentTask = tasks.RENDERING;
-        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsLoud, "-c:v", "libx264", "-crf", "23", "-preset", "medium", this.files.segmentBetweenBoundsLoudCompressed);
+        const targetBitrate = Math.floor(this.CalculateTargetBitrateFromVideoLength() * 0.95).toString();
+
+        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsLoud, "-b:v", targetBitrate,
+            "-maxrate", targetBitrate, this.files.segmentBetweenBoundsLoudCompressed);
         const compressedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoudCompressed);
         const compressedBlob = new Blob([compressedResult.buffer], { type: 'video/mp4' });
         CreateDownloadLink("Trimmed-video-compressed.mp4", "Download compressed trimmed video!", URL.createObjectURL(compressedBlob));
