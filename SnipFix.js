@@ -1,7 +1,8 @@
 import { Timeline } from "./TrackTimeline.js";
 import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink } from "./Utils.js"
 import Crunker from 'https://unpkg.com/crunker@latest/dist/crunker.esm.js';
-const { createFFmpeg } = FFmpeg;
+import { FFmpeg } from "./node_modules/@ffmpeg/ffmpeg/dist/esm/index.js";
+import { toBlobURL } from "./node_modules/@ffmpeg/util/dist/esm/index.js";
 
 const tasks = Object.freeze({
     NONE: Symbol("none"),
@@ -51,8 +52,11 @@ export class SnipFix {
     }
 
     constructor() {
-        this.#ffmpeg = createFFmpeg({ log: false });
-        this.#ffmpeg.setLogger(this.#ffmpegLogHandler.bind(this)); // javascript is massive feces
+        this.#ffmpeg = new FFmpeg(); // createFFmpeg({ log: false });
+        /*this.#ffmpeg.on('progress', ({ progress, time }) => {
+            this.#ffmpegProgressHandler(progress, time);
+        });*/
+        this.#ffmpeg.on('log', this.#ffmpegLogHandler.bind(this));
         this.#crunker = new Crunker(); // TODO: Investigate if sample rate matters here.
         this.currentTask = tasks.NONE;
         this.#programmableStyleSheet = new CSSStyleSheet();
@@ -80,11 +84,20 @@ export class SnipFix {
         }
     }
 
-    loadFFmpeg() {
-        this.#ffmpeg.load();
+    async loadFFmpeg() {
+        console.log("ffmpeg.load returned: " + await this.#ffmpeg.load({
+            log: false,
+            coreURL: "/node_modules/@ffmpeg/core-mt/dist/esm/ffmpeg-core.js",
+            wasmURL: "/node_modules/@ffmpeg/core-mt/dist/esm/ffmpeg-core.wasm",
+            //workerURL: "/node_modules/@ffmpeg/core-mt/dist/esm/ffmpeg-core.worker.js",
+        }));
     }
 
     #ffmpegLogHandler(typeAndMessage) {
+        if (typeAndMessage.message.startsWith("Aborted")) {
+            this.clearBusyState();
+            return;
+        }
 
         switch (this.currentTask) {
             // Catch showinfo messages to find keyframe pts times.
@@ -95,29 +108,47 @@ export class SnipFix {
                 }
                 break;
         }
+        //console.log(`[${typeAndMessage.type}] ` + typeAndMessage.message);
+    }
 
-        if (typeAndMessage.type == "ffout" && typeAndMessage.message.includes("FFMPEG_END")) {
-            if (this.currentTask == tasks.FINDING_KEYFRAMES) { console.log(this.timeline.keyframePts); }
-            this.currentTask = tasks.NONE;
-            console.log("FFmpeg is no longer busy.");
+    clearBusyState() {
+        if (this.currentTask == tasks.FINDING_KEYFRAMES) { console.log(this.timeline.keyframePts); }
+        this.currentTask = tasks.NONE;
+        console.log("FFmpeg is no longer busy. Cleared busy state.");
+    }
+
+    ExtractDuration(message) {
+        const durationSignature = "Duration:";
+        if (message.includes(durationSignature)) {
+            const durationStart = message.indexOf(durationSignature) + durationSignature.length;
+            const timeUnits = message.substr(durationStart).trim().split(",")[0].split(":");
+            const hours = parseInt(timeUnits[0]);
+            const minutes = parseInt(timeUnits[1]);
+            const seconds = parseFloat(timeUnits[2]);
+            const duration = hours * 3600 + minutes * 60 + seconds;
+            this.timeline.duration = duration;
+            console.log("Duration: " + this.timeline.duration);
         }
+    }
 
-        console.log(`[${typeAndMessage.type}] ` + typeAndMessage.message);
+    #ffmpegProgressHandler(progress, time) {
+        //console.log(`Processing: ${progress * 100}% done. Time: ${time}`);
+
+        if (progress >= 1.0) {
+            this.clearBusyState();
+        }
     }
 
     // Writes a video file to the ffmpeg file system and extracts audio streams into files.
     async writeLoudInputVideo(fileData) {
-
-        console.log(fileData);
-        this.#ffmpeg.FS('writeFile', this.files.loudInput, fileData);
-
         var streamNames = extractAudioStreamNamesFromFileData(fileData);
+        await this.#ffmpeg.writeFile(this.files.loudInput, fileData);
 
         for (let i = 0; i < streamNames.length; i++) {
             const stream = streamNames[i];
             await this.#extractAudioStreamFromLoudInput(i);
 
-            const data = this.readMediaFile(this.files.loudInputAudioStreams[i]);
+            const data = await this.readMediaFile(this.files.loudInputAudioStreams[i]);
             const audioBlob = new Blob([data.buffer], { type: 'audio/mpeg' });
             const audioURL = URL.createObjectURL(audioBlob);
 
@@ -130,9 +161,9 @@ export class SnipFix {
     }
 
     // Returns the file data of a file if it exists in the ffmpeg file system. 
-    readMediaFile(file) {
+    async readMediaFile(file) {
         if (!isStringInObjectWithArrays(file, this.files)) { console.error("Trying to read file that doesn't exist: " + file); return; }
-        return this.#ffmpeg.FS('readFile', file);
+        return await this.#ffmpeg.readFile(file);
     }
 
     #extractPtsTimeFromShowinfoExcerpt(showinfoFrameOutput) {
@@ -150,7 +181,7 @@ export class SnipFix {
 
     async findKeyframePtsAroundTime(aroundTimeSeconds, searchTimeWindowSeconds) {
         if (this.isBusyProcessing) {
-            console.error("Cannot start keyframe search when busy.");
+            console.error("Cannot start keyframe search when busy. Current task: " + this.currentTask.toString());
             return;
         }
 
@@ -162,8 +193,8 @@ export class SnipFix {
         }
 
         this.currentTask = tasks.FINDING_KEYFRAMES;
-        await this.#ffmpeg.run("-ss", this.#keyframeSearchStartTime.toString(), '-i', this.files.loudInput, "-t", searchTimeWindowSeconds.toString(),
-            '-vf', "select='eq(pict_type,I)',showinfo", '-f', 'null', "-")
+        await this.#ffmpeg.exec(["-ss", this.#keyframeSearchStartTime.toString(), '-i', this.files.loudInput, /*"-t", searchTimeWindowSeconds.toString(),*/
+            '-vf', "select='eq(pict_type,I)',showinfo", '-f', 'null', "-"])
     }
 
     async #renderSegmentOfMedia(inputFileName, fromTime, toTime, outputFileName) {
@@ -173,7 +204,7 @@ export class SnipFix {
         }
 
         this.currentTask = tasks.RENDERING;
-        await this.#ffmpeg.run('-i', inputFileName, '-ss', fromTime.toString(), '-to', toTime.toString(), "-c", "copy", outputFileName);
+        await this.#ffmpeg.exec(['-i', inputFileName, '-ss', fromTime.toString(), '-to', toTime.toString(), "-c", "copy", outputFileName]);
     }
 
     async renderSegmentBetweenBounds() {
@@ -194,7 +225,7 @@ export class SnipFix {
                 this.timeline.closestKeyframePtsToEndBound,
                 segmentAudioStreamName);
 
-            const data = this.readMediaFile(segmentAudioStreamName);
+            const data = await this.readMediaFile(segmentAudioStreamName);
             const audioBlob = new Blob([data.buffer], { type: 'audio/mpeg' });
             const audioURL = URL.createObjectURL(audioBlob);
             this.timeline.audioTracks[i].mediaElement.src = audioURL;
@@ -217,9 +248,9 @@ export class SnipFix {
         this.currentTask = tasks.RENDERING;
         const targetBitrate = Math.floor(this.CalculateTargetBitrateFromVideoLength() * 0.95).toString();
 
-        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsLoud, "-b:v", targetBitrate,
-            "-maxrate", targetBitrate, this.files.segmentBetweenBoundsLoudCompressed);
-        const compressedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoudCompressed);
+        await this.#ffmpeg.exec(["-i", this.files.segmentBetweenBoundsLoud, "-b:v", targetBitrate,
+            "-maxrate", targetBitrate, this.files.segmentBetweenBoundsLoudCompressed]);
+        const compressedResult = await this.readMediaFile(this.files.segmentBetweenBoundsLoudCompressed);
         const compressedBlob = new Blob([compressedResult.buffer], { type: 'video/mp4' });
         CreateDownloadLink("Trimmed-video-compressed.mp4", "Download compressed trimmed video!", URL.createObjectURL(compressedBlob));
     }
@@ -233,7 +264,7 @@ export class SnipFix {
         this.currentTask = tasks.EXTRACTING;
         const newAudioStreamFileName = "loudInputAudio" + streamIndex + ".aac";
         this.files.loudInputAudioStreams.push(newAudioStreamFileName);
-        await this.#ffmpeg.run("-i", this.files.loudInput, "-filter:a", "loudnorm", "-map", "0:a:" + streamIndex.toString(), /*"-c", "copy",*/ newAudioStreamFileName);
+        await this.#ffmpeg.exec(["-i", this.files.loudInput, "-filter:a", "loudnorm", "-map", "0:a:" + streamIndex.toString(), /*"-c", "copy",*/ newAudioStreamFileName]);
     }
 
     // Creates a silent version of the input video file.
@@ -244,10 +275,10 @@ export class SnipFix {
         }
 
         this.currentTask = tasks.REMOVING;
-        await this.#ffmpeg.run("-i", this.files.loudInput, "-c", "copy", "-an", this.files.silencedInput);
+        await this.#ffmpeg.exec(["-i", this.files.loudInput, "-c", "copy", "-an", this.files.silencedInput]);
 
         // Create download link for silent video.
-        const silencedResult = this.readMediaFile(this.files.silencedInput);
+        const silencedResult = await this.readMediaFile(this.files.silencedInput);
         const silencedBlob = new Blob([silencedResult.buffer], { type: 'video/mp4' });
         const silencedResultURL = URL.createObjectURL(silencedBlob);
         CreateDownloadLink('video-silenced.mp4', 'Download silent video.', silencedResultURL);
@@ -266,7 +297,7 @@ export class SnipFix {
 
         const allFlags = `-i ${this.files.segmentBetweenBoundsSilent} ${audioStreamFileNames}${audioStreamMapFlags}-map 0:v:0 -c copy ${this.files.segmentBetweenBoundsLoud}`.split(" ");
         this.currentTask = tasks.ADDING_AUDIO;
-        await this.#ffmpeg.run(...allFlags);
+        await this.#ffmpeg.exec(allFlags);
     }
 
     // Was supposed to merge all the audio streams of a video file into a single audio stream,
@@ -279,13 +310,13 @@ export class SnipFix {
 
         const allFlags = `-i ${this.files.segmentBetweenBoundsLoud} -filter_complex '${streamFlags}amix=inputs=${this.files.segmentBetweenBoundsAudioStreams.length.toString()}:duration=longest[aout]' -map 0:v -map '[aout]' -c:v copy -ac 2 ${this.files.segmentBetweenBoundsFinal}`.split(" ");
         this.currentTask = tasks.MERGING;
-        await this.#ffmpeg.run(...allFlags);
+        await this.#ffmpeg.exec(allFlags);
     }
 
     async #createMergedAudioFile() {
         const dataOfAudioFiles = [];
         for (const audioFileName of this.files.segmentBetweenBoundsAudioStreams) {
-            dataOfAudioFiles.push(this.readMediaFile(audioFileName));
+            dataOfAudioFiles.push(await this.readMediaFile(audioFileName));
         }
 
         console.log(dataOfAudioFiles[0].buffer)
@@ -295,9 +326,9 @@ export class SnipFix {
         const merged = await this.#crunker.mergeAudio(buffers);
         const output = await this.#crunker.export(merged, 'audio/mp3');
         const uint8Array = await blobToUint8Array(output.blob);
-        await this.#ffmpeg.FS('writeFile', this.files.segmentBetweenBoundsAudioMergedUselessWAV, uint8Array);
-        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsAudioMergedUselessWAV, this.files.segmentBetweenBoundsAudioMergedWell);
-        const mergedResult = this.readMediaFile(this.files.segmentBetweenBoundsAudioMergedWell);
+        await this.#ffmpeg.writeFile(this.files.segmentBetweenBoundsAudioMergedUselessWAV, uint8Array);
+        await this.#ffmpeg.exec(["-i", this.files.segmentBetweenBoundsAudioMergedUselessWAV, this.files.segmentBetweenBoundsAudioMergedWell]);
+        const mergedResult = await this.readMediaFile(this.files.segmentBetweenBoundsAudioMergedWell);
         const mergedBlob = new Blob([mergedResult.buffer], { type: 'video/mp4' });
         CreateDownloadLink("mergedAudio.wav", "Download merged audio", URL.createObjectURL(mergedBlob));
     }

@@ -1,6 +1,6 @@
 import { SnipFix } from "./SnipFix.js";
 import { CreateDownloadLink } from "./Utils.js";
-const { fetchFile } = FFmpeg;
+import { fetchFile } from "./node_modules/@ffmpeg/util/dist/esm/index.js";
 
 const upload = document.getElementById('upload');
 const editButton = document.getElementById('EditButton');
@@ -17,7 +17,7 @@ upload.addEventListener('change', async (event) => {
     if (!file) return;
     await snipFix.writeLoudInputVideo(await fetchFile(file));
 
-    const data = snipFix.readMediaFile(snipFix.files.silencedInput);
+    const data = await snipFix.readMediaFile(snipFix.files.silencedInput);
     const silentVideoBlob = new Blob([data.buffer], { type: 'video/mp4' });
     const silentVideoURL = URL.createObjectURL(silentVideoBlob);
 
@@ -37,14 +37,14 @@ upload.addEventListener('change', async (event) => {
         console.log(snipFix.CalculateTargetBitrateFromVideoLength());
         await snipFix.renderSegmentBetweenBounds();
 
-        const data = snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsSilent);
+        const data = await snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsSilent);
         const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
         const trimResult = URL.createObjectURL(videoBlob);
 
         video.src = trimResult;
         video.currentTime = 0.2; // So video doesn't load forever ¯\_(ツ)_/¯
 
-        const trimmedResult = snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsLoud);
+        const trimmedResult = await snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsLoud);
         const finalBlob = new Blob([trimmedResult.buffer], { type: 'video/mp4' });
         const trimmedResultURL = URL.createObjectURL(finalBlob);
 
@@ -71,7 +71,7 @@ video.addEventListener('loadedmetadata', (event) => {
     snipFix.timeline.syncPlayheadToMedia();
 });
 
-window.onload = () => {
+window.onload = async () => {
     // Prevent dragging of any element.
     for (const element of document.querySelectorAll('*')) {
         element.setAttribute('draggable', 'false');
@@ -79,6 +79,6 @@ window.onload = () => {
 
     snipFix.timeline.colorizeAllClips();
     snipFix.timeline.syncBoundHeightToNumTracks();
-    snipFix.loadFFmpeg();
+    await snipFix.loadFFmpeg();
     video.load()
 }

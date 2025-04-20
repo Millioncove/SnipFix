@@ -3,3 +3,4 @@
 *.aac
 *.wav
 *.py
+node_modules/
