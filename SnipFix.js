@@ -1,7 +1,8 @@
 import { Timeline } from "./TrackTimeline.js";
 import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink } from "./Utils.js"
 import Crunker from 'https://unpkg.com/crunker@latest/dist/crunker.esm.js';
-const { createFFmpeg } = FFmpeg;
+import { setVideoSrc, setEditorVisibility } from "./script.js";
+const { createFFmpeg, fetchFile } = FFmpeg;
 
 const tasks = Object.freeze({
     NONE: Symbol("none"),
@@ -300,5 +301,40 @@ export class SnipFix {
         const mergedResult = this.readMediaFile(this.files.segmentBetweenBoundsAudioMergedWell);
         const mergedBlob = new Blob([mergedResult.buffer], { type: 'video/mp4' });
         CreateDownloadLink("mergedAudio.wav", "Download merged audio", URL.createObjectURL(mergedBlob));
+    }
+
+    async PerformMainEdit() {
+        console.log(this.CalculateTargetBitrateFromVideoLength());
+        await this.renderSegmentBetweenBounds();
+
+        const data = this.readMediaFile(this.files.segmentBetweenBoundsSilent);
+        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        const trimResult = URL.createObjectURL(videoBlob);
+
+        setVideoSrc(trimResult);
+
+        const trimmedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoud);
+        const finalBlob = new Blob([trimmedResult.buffer], { type: 'video/mp4' });
+        const trimmedResultURL = URL.createObjectURL(finalBlob);
+
+        CreateDownloadLink('trimmed-video-loud.mp4', 'Download trimmed video with merged audio!!', trimmedResultURL);
+    }
+
+    async UploadListener(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        await this.writeLoudInputVideo(await fetchFile(file));
+
+        const data = this.readMediaFile(this.files.silencedInput);
+        const silentVideoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        const silentVideoURL = URL.createObjectURL(silentVideoBlob);
+
+        setVideoSrc(silentVideoURL);
+        this.timeline.videoTrack = this.timeline.createMediaTrack("Video", video);
+
+        await this.findKeyframePtsAroundTime(0, 1)
+        await this.findKeyframePtsAroundTime(this.timeline.duration, 1)
+
+        setEditorVisibility(true);
     }
 }

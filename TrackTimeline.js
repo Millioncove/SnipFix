@@ -40,6 +40,9 @@ export class Timeline {
         this.currentTime = parseInt(newFrame) / this.frameRate; // Calls setter inherently...
     }
 
+    get boundStartTime() { return this.startBound.value / this.frameRate; }
+    get boundEndTime() { return this.endBound.value / this.frameRate; }
+
     constructor() {
         this.Container = document.getElementById('TracksTimeline');
         this.startBound = document.getElementById('TimelineStartBound');
@@ -136,7 +139,7 @@ export class Timeline {
     }
 
     createMediaTrack(trackName, mediaElement) {
-        const newMediaTrack = new MediaTrack(trackName, mediaElement);
+        const newMediaTrack = new MediaTrack(this, trackName, mediaElement);
         newMediaTrack.setAttribute("draggable", "false");
         this.Container.appendChild(newMediaTrack);
         this.allTracks.push(newMediaTrack);

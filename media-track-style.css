@@ -3,7 +3,7 @@
     background-color: #2222;
 }
 
-.clip {
+#Clip {
     width: -moz-available;
     border-radius: 0.4em;
     position: inherit;

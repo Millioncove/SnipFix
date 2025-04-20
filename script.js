@@ -1,6 +1,4 @@
 import { SnipFix } from "./SnipFix.js";
-import { CreateDownloadLink } from "./Utils.js";
-const { fetchFile } = FFmpeg;
 
 const upload = document.getElementById('upload');
 const editButton = document.getElementById('EditButton');
@@ -12,47 +10,22 @@ document.adoptedStyleSheets.push(programmableStyleSheet);
 
 const snipFix = new SnipFix(programmableStyleSheet);
 
-upload.addEventListener('change', async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    await snipFix.writeLoudInputVideo(await fetchFile(file));
+export function setVideoSrc(url) {
+    video.src = url;
+    video.currentTime = 0.2; // So video doesn't load forever ¯\_(ツ)_/¯
+}
 
-    const data = snipFix.readMediaFile(snipFix.files.silencedInput);
-    const silentVideoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-    const silentVideoURL = URL.createObjectURL(silentVideoBlob);
+export function setEditorVisibility(visible) {
+    if (visible) {
+        upload.hidden = true;
+        programmableStyleSheet.replaceSync("#SnipFixEditor { display: flex; }");
+    } else {
+        upload.hidden = false;
+        programmableStyleSheet.replaceSync("#SnipFixEditor { display: none; }");
+    }
+}
 
-    video.src = silentVideoURL;
-    snipFix.timeline.videoTrack = snipFix.timeline.createMediaTrack("Video", video);
-
-    await snipFix.findKeyframePtsAroundTime(0, 1)
-    await snipFix.findKeyframePtsAroundTime(snipFix.timeline.duration, 1)
-
-    document.getElementById("MainPlayPause").disabled = false;
-    upload.hidden = true;
-    programmableStyleSheet.replaceSync("#SnipFixEditor { display: flex; }");
-
-    // The edit button.
-    editButton.addEventListener('click', async () => {
-
-        console.log(snipFix.CalculateTargetBitrateFromVideoLength());
-        await snipFix.renderSegmentBetweenBounds();
-
-        const data = snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsSilent);
-        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-        const trimResult = URL.createObjectURL(videoBlob);
-
-        video.src = trimResult;
-        video.currentTime = 0.2; // So video doesn't load forever ¯\_(ツ)_/¯
-
-        const trimmedResult = snipFix.readMediaFile(snipFix.files.segmentBetweenBoundsLoud);
-        const finalBlob = new Blob([trimmedResult.buffer], { type: 'video/mp4' });
-        const trimmedResultURL = URL.createObjectURL(finalBlob);
-
-        CreateDownloadLink('trimmed-video-loud.mp4', 'Download trimmed video with merged audio!!', trimmedResultURL);
-    });
-
-
-});
+upload.addEventListener('change', snipFix.UploadListener.bind(snipFix));
 
 
 // Update the timeline sliders steps.
@@ -81,4 +54,5 @@ window.onload = () => {
     snipFix.timeline.syncBoundHeightToNumTracks();
     snipFix.loadFFmpeg();
     video.load()
+    editButton.addEventListener('click', snipFix.PerformMainEdit.bind(snipFix));
 }

@@ -1,20 +1,15 @@
 export class MediaTrack extends HTMLElement {
-    startBoundTime;
-    endBoundTime;
+    timeline;
     isVideoTrack = false;
 
-    constructor(trackName, videoElementIfVideoTrack) {
+    constructor(timeline, trackName, videoElementIfVideoTrack) {
         super();
+        this.timeline = timeline;
 
         // Create shadow tree
         const trackTemplate = document.getElementById("media-track-template").content;
-
-        const shadowRoot = this.attachShadow({ mode: "open" });
-        shadowRoot.appendChild(trackTemplate.cloneNode(true));
-
-        // Apply stylesheet to shadow tree.
-        this.sheet = new CSSStyleSheet();
-        shadowRoot.adoptedStyleSheets = [this.sheet];
+        this.attachShadow({ mode: "open" });
+        this.shadowRoot.appendChild(trackTemplate.cloneNode(true));
 
         // Track name
         if (trackName == null) {
@@ -47,11 +42,12 @@ export class MediaTrack extends HTMLElement {
     }
 
     colorizeTrack() {
-        const startPercentage = (this.startBoundTime / this.mediaElement.duration) * 100;
-        const endPercentage = (this.endBoundTime / this.mediaElement.duration) * 100;
+        const startPercentage = (this.timeline.boundStartTime / this.timeline.duration) * 100;
+        const endPercentage = (this.timeline.boundEndTime / this.timeline.duration) * 100;
         const spacePercentage = endPercentage - startPercentage;
-
-        this.sheet.replaceSync(".clip { margin-left: " + startPercentage + "%; width: " + spacePercentage + "%}");
+        const clipDiv = this.shadowRoot.querySelector("#Clip");
+        clipDiv.style.marginLeft = startPercentage + "%";
+        clipDiv.style.width = spacePercentage + "%";
     }
 }
 
