@@ -168,6 +168,13 @@ export class Timeline {
         }
     }
 
+    removeAllTracks() {
+        for (const track of this.allTracks) {
+            track.remove();
+        }
+        this.allTracks = [];
+    }
+
     // Make sure the video stops when it is seeked past or played into a bound.
     keepMediaWithinBounds() {
         const clipStartTime = this.startBound.value / this.frameRate;

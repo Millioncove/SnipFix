@@ -10,9 +10,10 @@ document.adoptedStyleSheets.push(programmableStyleSheet);
 
 const snipFix = new SnipFix(programmableStyleSheet);
 
-export function setVideoSrc(url) {
+export function setVideo(url) {
     video.src = url;
     video.currentTime = 0.2; // So video doesn't load forever ¯\_(ツ)_/¯
+    snipFix.timeline.videoTrack = snipFix.timeline.createMediaTrack("Video", document.getElementById("video"));
 }
 
 export function setEditorVisibility(visible) {
@@ -44,6 +45,7 @@ video.addEventListener('loadedmetadata', (event) => {
     snipFix.timeline.startBound.value = 0;
     snipFix.timeline.endBound.value = snipFix.timeline.endBound.max;
     snipFix.timeline.syncPlayheadToMedia();
+    snipFix.timeline.colorizeAllClips();
 });
 
 window.onload = () => {

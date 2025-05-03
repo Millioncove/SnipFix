@@ -1,7 +1,7 @@
 import { Timeline } from "./TrackTimeline.js";
 import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink } from "./Utils.js"
 import Crunker from 'https://unpkg.com/crunker@latest/dist/crunker.esm.js';
-import { setVideoSrc, setEditorVisibility } from "./script.js";
+import { setVideo, setEditorVisibility } from "./script.js";
 import { icons } from "./GalleryEntry.js";
 const { createFFmpeg, fetchFile } = FFmpeg;
 
@@ -309,7 +309,8 @@ export class SnipFix {
         console.log(this.CalculateTargetBitrateFromVideoLength());
         await this.renderSegmentBetweenBounds();
 
-        setVideoSrc(this.fileToBlobURL(this.files.segmentBetweenBoundsSilent).url);
+        this.timeline.removeAllTracks();
+        setVideo(this.fileToBlobURL(this.files.segmentBetweenBoundsLoud).url);
 
         const trimmedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoud);
         CreateDownloadLink(icons.VIDEO, 'trimmed.mp4', 'Trimmed video (merged audio)', trimmedResult.url, trimmedResult.size);
@@ -331,8 +332,7 @@ export class SnipFix {
         document.getElementById("UploadButton").style.display = "none";
         await this.writeLoudInputVideo(await fetchFile(file));
 
-        setVideoSrc(this.fileToBlobURL(this.files.silencedInput, 'video/mp4').url);
-        this.timeline.videoTrack = this.timeline.createMediaTrack("Video", video);
+        setVideo(this.fileToBlobURL(this.files.silencedInput, 'video/mp4').url);
 
         await this.findKeyframePtsAroundTime(0, 1)
         await this.findKeyframePtsAroundTime(this.timeline.duration, 1)
