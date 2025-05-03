@@ -144,7 +144,12 @@ export class Timeline {
         if (trackName != "Video") {
             this.Container.appendChild(newMediaTrack);
         } else {
-            document.getElementsByTagName("media-track")[0].before(newMediaTrack);
+            const othertracks = document.getElementsByTagName("media-track");
+            if (othertracks.length > 0) {
+                othertracks[0].before(newMediaTrack);
+            } else {
+                this.Container.appendChild(newMediaTrack);
+            }
         }
         this.allTracks.push(newMediaTrack);
         this.syncBoundHeightToNumTracks();
