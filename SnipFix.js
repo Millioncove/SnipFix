@@ -6,13 +6,13 @@ const { createFFmpeg, fetchFile } = FFmpeg;
 
 const tasks = Object.freeze({
     NONE: Symbol("none"),
-    WRITING: Symbol("writing"),
-    FINDING_KEYFRAMES: Symbol("finding_keyframes"),
-    RENDERING: Symbol("rendering"),
-    EXTRACTING: Symbol("extracting"),
-    REMOVING: Symbol("removing"),
-    ADDING_AUDIO: Symbol("adding_audio"),
-    MERGING: Symbol("merging"),
+    WRITING: Symbol("Writing to file system..."),
+    FINDING_KEYFRAMES: Symbol("Finding keyframes..."),
+    RENDERING: Symbol("Rendering..."),
+    EXTRACTING: Symbol("Extracting audio..."),
+    REMOVING: Symbol("Removing audio..."),
+    ADDING_AUDIO: Symbol("Adding audio..."),
+    MERGING: Symbol("Merging audio..."),
 })
 
 export class SnipFix {
@@ -49,6 +49,12 @@ export class SnipFix {
         for (const processingButton of document.getElementsByClassName("video-processing-starter")) {
             processingButton.disabled = this.isBusyProcessing;
         }
+
+        for (const processingButton of document.getElementsByClassName("processing-indicator")) {
+            processingButton.style.display = this.isBusyProcessing ? "flex" : "none";
+        }
+
+        document.getElementById("ProcessingStatus").textContent = task.description;
     }
 
     constructor() {

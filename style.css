@@ -31,6 +31,22 @@ body {
     height: 3em;
 }
 
+.flex-margin {
+    display: flex;
+    flex: 1 1 0;
+}
+
+#ProcessingStatus {
+    margin: auto;
+    margin-right: 1em;
+    color: gray;
+}
+
+.process-spinner {
+    color: lightgray;
+    margin: auto;
+    width: min-content;
+}
 #ControlsContainer>button {
     width: 6em;
     font-size: xx-large;

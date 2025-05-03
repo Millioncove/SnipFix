@@ -11,9 +11,9 @@
 
 <body>
     <input type="file" id="upload" accept="video/*">
-
+    
     <div id="SnipFixEditor">
-
+        
         <div id="VideoContainer">
             <video id="video" playsinline class="play-pause">
                 <source type="video/mp4">
@@ -22,7 +22,14 @@
         </div>
 
         <div id="ControlsContainer">
+            <div class="flex-margin">
+                <div class="flex-margin"></div>
+                <h2 id="ProcessingStatus" class="processing-indicator">Editor ready!</h2>
+                <i class="processing-indicator process-spinner fa fa-cog fa-spin fa-3x"></i>
+                <div class="flex-margin"></div>
+            </div>
             <button id="EditButton" disabled class="video-processing-starter">Edit</button>
+            <div class="flex-margin"></div>
         </div>
 
         <div id="TracksContainer">
