@@ -3,6 +3,8 @@ body {
     margin: 0;
     height: 100%;
     /*overflow: hidden;*/
+    display: flex;
+        justify-content: center;
 }
 
 /*Just the upload page*/
@@ -20,16 +22,30 @@ body {
     width: 6em;
 }
 
+/*File gallery*/
+#FileGallery {
+    display: none;
+    height: inherit;
+    flex: 3 1 15%;
+}
+
+#FileGalleryContainer {
+    display: flex;
+    overflow-y: scroll;
+    flex-direction: column;
+    width: 100%;
+}
 /*The actual editor*/
 #SnipFixEditor {
     height: inherit;
     display: none;
     flex-direction: column;
     justify-content: center;
+    flex: 3 0 75%;
 }
 
 #VideoContainer {
-    flex: 1 1 auto;
+    /*flex: 1 1 auto;*/
     display: flex;
     justify-content: center;
     min-height: 0;
@@ -40,7 +56,7 @@ body {
 }
 
 #ControlsContainer {
-    flex: 1 1 10%;
+    flex: 0 0 5%;
     display: flex;
     justify-content: center;
     margin: 0.5em;
@@ -84,19 +100,8 @@ button {
     border-radius: 1em;
 }
 
-#FileGallery {
-    width: 20%;
-    height: 100%;
-    overflow-y: scroll;
-}
-
-#FileGalleryContainer {
-    display: flex;
-    overflow-y: hidden;
-    flex-direction: column;
-}
 #TracksContainer {
-    flex: 8 0 35%;
+    flex: 1 0 31%;
     position: relative;
     background-color: rgba(0, 81, 255, 0.575);
     display: flex;

@@ -21,15 +21,44 @@
         <div class="flex-margin"></div>
     </div>
     
+    <div id="FileGallery">
+        <div id="FileGalleryContainer">
+    
+            <template id="gallery-entry-template">
+                <div id="EntryContainer">
+    
+                    <link rel="stylesheet" href="gallery-entry-style.css">
+                    <link rel="stylesheet"
+                        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    
+                    <i id="FileIcon" class="fa fa-file-image-o"></i>
+                    
+                    <h1 id="EntryTitle">File name!</h1>
+                    <div id="FileEntry">
+                        <div id="FileInfo">
+                            <p id="FileSize">File size!</p>
+                            <p id="FileName">File name!</p>
+                        </div>
+                        <div id="ButtonContainer">
+                            <a id="DownloadButton">Download<i class="fa fa-download"></i></a>
+                            <button id="DeleteButton">Delete<i class="fa fa-times"></i></button>
+                        </div>
+                    </div>
+    
+                </div>
+            </template>
+        </div>
+    
+    </div>
     <div id="SnipFixEditor">
-        
+    
         <div id="VideoContainer">
             <video id="video" playsinline class="play-pause">
                 <source type="video/mp4">
                 Your browser does not support the video tag.
             </video>
         </div>
-
+    
         <div id="ControlsContainer">
             <div class="flex-margin">
                 <div class="flex-margin"></div>
@@ -40,36 +69,8 @@
             <button id="EditButton" disabled class="video-processing-starter">Edit</button>
             <div class="flex-margin"></div>
         </div>
-
+    
         <div id="TracksContainer">
-            <div id="FileGallery">
-                <div id="FileGalleryContainer">
-            
-                    <template id="gallery-entry-template">
-                        <div id="EntryContainer">
-            
-                            <link rel="stylesheet" href="gallery-entry-style.css">
-                            <link rel="stylesheet"
-                                href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-            
-                            <i id="FileIcon" class="fa fa-file-image-o"></i>
-                            <div id="FileEntry">
-                                <h1 id="EntryTitle">File name!</h1>
-                                <div id="FileInfo">
-                                    <p id="FileSize">File size!</p>
-                                    <p id="FileName">File name!</p>
-                                </div>
-                                <div id="ButtonContainer">
-                                    <a id="DownloadButton">Download<i class="fa fa-download"></i></a>
-                                    <button id="DeleteButton">Delete<i class="fa fa-times"></i></button>
-                                </div>
-                            </div>
-            
-                        </div>
-                    </template>
-                </div>
-            
-            </div>
             <div id="TracksTimeline">
                 <input type="range" id="Playhead" class="timeline-slider">
                 <input type="range" id="TimelineStartBound" class="timeline-slider bound">

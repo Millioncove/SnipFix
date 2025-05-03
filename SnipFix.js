@@ -2,6 +2,7 @@ import { Timeline } from "./TrackTimeline.js";
 import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink } from "./Utils.js"
 import Crunker from 'https://unpkg.com/crunker@latest/dist/crunker.esm.js';
 import { setVideoSrc, setEditorVisibility } from "./script.js";
+import { icons } from "./GalleryEntry.js";
 const { createFFmpeg, fetchFile } = FFmpeg;
 
 const tasks = Object.freeze({
@@ -133,7 +134,7 @@ export class SnipFix {
             const newAudioTrack = this.timeline.createMediaTrack(stream);
             newAudioTrack.mediaElement.src = audioURL;
 
-            CreateDownloadLink(`audio${i}.aac`, `Download audio ${i} `, audioURL);
+            CreateDownloadLink(icons.AUDIO, `${stream}.aac`, stream, audioURL, audioBlob.size);
         }
         await this.silenceLoudInput();
     }
@@ -230,7 +231,7 @@ export class SnipFix {
             "-maxrate", targetBitrate, this.files.segmentBetweenBoundsLoudCompressed);
         const compressedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoudCompressed);
         const compressedBlob = new Blob([compressedResult.buffer], { type: 'video/mp4' });
-        CreateDownloadLink("Trimmed-video-compressed.mp4", "Download compressed trimmed video!", URL.createObjectURL(compressedBlob));
+        CreateDownloadLink(icons.VIDEO, "Trimmed-compressed.mp4", "Compressed trimmed video (merged audio)", URL.createObjectURL(compressedBlob), compressedBlob.size);
     }
 
     async #extractAudioStreamFromLoudInput(streamIndex) {
@@ -259,7 +260,7 @@ export class SnipFix {
         const silencedResult = this.readMediaFile(this.files.silencedInput);
         const silencedBlob = new Blob([silencedResult.buffer], { type: 'video/mp4' });
         const silencedResultURL = URL.createObjectURL(silencedBlob);
-        CreateDownloadLink('video-silenced.mp4', 'Download silent video.', silencedResultURL);
+        CreateDownloadLink(icons.VIDEO, 'video-silenced.mp4', 'Silent video', silencedResultURL, silencedBlob.size);
     }
 
     async #addAudioStreamsToSegmentBetweenBounds(...audioFileNames) {
@@ -308,7 +309,7 @@ export class SnipFix {
         await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsAudioMergedUselessWAV, this.files.segmentBetweenBoundsAudioMergedWell);
         const mergedResult = this.readMediaFile(this.files.segmentBetweenBoundsAudioMergedWell);
         const mergedBlob = new Blob([mergedResult.buffer], { type: 'video/mp4' });
-        CreateDownloadLink("mergedAudio.wav", "Download merged audio", URL.createObjectURL(mergedBlob));
+        CreateDownloadLink(icons.AUDIO, "mergedAudio.wav", "Merged audio", URL.createObjectURL(mergedBlob), mergedBlob.size);
     }
 
     async PerformMainEdit() {
@@ -320,12 +321,13 @@ export class SnipFix {
         const trimResult = URL.createObjectURL(videoBlob);
 
         setVideoSrc(trimResult);
+        this.timeline.colorizeAllClips();
 
         const trimmedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoud);
         const finalBlob = new Blob([trimmedResult.buffer], { type: 'video/mp4' });
         const trimmedResultURL = URL.createObjectURL(finalBlob);
 
-        CreateDownloadLink('trimmed-video-loud.mp4', 'Download trimmed video with merged audio!!', trimmedResultURL);
+        CreateDownloadLink(icons.VIDEO, 'trimmed.mp4', 'Trimmed video (merged audio)', trimmedResultURL, finalBlob.size);
     }
 
     async UploadListener(event) {

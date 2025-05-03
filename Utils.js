@@ -1,4 +1,4 @@
-import { GalleryEntry, icons } from "./GalleryEntry.js";
+import { GalleryEntry } from "./GalleryEntry.js";
 
 function isHumanReadable(char) {
     // Regular expression to match human-readable Unicode characters
@@ -61,6 +61,17 @@ export function blobToUint8Array(blob) {
     });
 }
 
-export function CreateDownloadLink(fileName, linkText, URL, fileSize = 0) {
-    new GalleryEntry(URL, icons.AUDIO, fileName, fileSize + " bytes", linkText);
+export function CreateDownloadLink(icon, fileName, linkText, URL, fileSize = 0) {
+    let sizeUnit = "";
+    if (fileSize >= 2 ** 30) {
+        sizeUnit = " GiB";
+        fileSize >>= 30;
+    } else if (fileSize >= 2 ** 20) {
+        sizeUnit = " MiB";
+        fileSize >>= 20;
+    } else if (fileSize >= 2 ** 10) {
+        sizeUnit = " KiB";
+        fileSize >>= 10;
+    }
+    new GalleryEntry(URL, icon, fileName, fileSize + sizeUnit, linkText);
 }

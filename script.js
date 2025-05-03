@@ -18,10 +18,12 @@ export function setVideoSrc(url) {
 export function setEditorVisibility(visible) {
     if (visible) {
         uploadPage.style.display = "none";
-        programmableStyleSheet.replaceSync("#SnipFixEditor { display: flex; }");
+        document.getElementById("SnipFixEditor").style.display = "flex";
+        document.getElementById("FileGallery").style.display = "flex";
     } else {
         uploadPage.style.display = "flex";
-        programmableStyleSheet.replaceSync("#SnipFixEditor { display: none; }");
+        document.getElementById("SnipFixEditor").style.display = "none";
+        document.getElementById("FileGallery").style.display = "none";
     }
 }
 
