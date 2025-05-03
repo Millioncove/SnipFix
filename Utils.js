@@ -1,3 +1,5 @@
+import { GalleryEntry, icons } from "./GalleryEntry.js";
+
 function isHumanReadable(char) {
     // Regular expression to match human-readable Unicode characters
     const humanReadableRegex = /^[\u0020-\u007E\u00A0-\u00FF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]*$/;
@@ -59,11 +61,6 @@ export function blobToUint8Array(blob) {
     });
 }
 
-export function CreateDownloadLink(fileName, linkText, URL) {
-    // Create download link
-    const a = document.createElement('a');
-    a.href = URL;
-    a.download = fileName;
-    a.textContent = linkText;
-    document.body.appendChild(a);
+export function CreateDownloadLink(fileName, linkText, URL, fileSize = 0) {
+    new GalleryEntry(URL, icons.AUDIO, fileName, fileSize + " bytes", linkText);
 }

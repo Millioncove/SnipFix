@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Editor Timeline</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -25,6 +26,34 @@
         </div>
 
         <div id="TracksContainer">
+            <div id="FileGallery">
+                <div id="FileGalleryContainer">
+            
+                    <template id="gallery-entry-template">
+                        <div id="EntryContainer">
+            
+                            <link rel="stylesheet" href="gallery-entry-style.css">
+                            <link rel="stylesheet"
+                                href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+            
+                            <i id="FileIcon" class="fa fa-file-image-o"></i>
+                            <div id="FileEntry">
+                                <h1 id="EntryTitle">File name!</h1>
+                                <div id="FileInfo">
+                                    <p id="FileSize">File size!</p>
+                                    <p id="FileName">File name!</p>
+                                </div>
+                                <div id="ButtonContainer">
+                                    <a id="DownloadButton">Download<i class="fa fa-download"></i></a>
+                                    <button id="DeleteButton">Delete<i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+            
+                        </div>
+                    </template>
+                </div>
+            
+            </div>
             <div id="TracksTimeline">
                 <input type="range" id="Playhead" class="timeline-slider">
                 <input type="range" id="TimelineStartBound" class="timeline-slider bound">

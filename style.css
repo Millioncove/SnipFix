@@ -8,7 +8,6 @@ body {
 #SnipFixEditor {
     height: inherit;
     display: none;
-    /*display: flex;*/
     flex-direction: column;
     justify-content: center;
 }
@@ -39,11 +38,23 @@ body {
     border-radius: 1em;
 }
 
+#FileGallery {
+    width: 20%;
+    height: 100%;
+    overflow-y: scroll;
+}
+
+#FileGalleryContainer {
+    display: flex;
+    overflow-y: hidden;
+    flex-direction: column;
+}
 #TracksContainer {
-    flex: 8 1 40%;
+    flex: 8 0 35%;
     position: relative;
     background-color: rgba(0, 81, 255, 0.575);
     display: flex;
+    overflow: auto;
 }
 
 #TracksTimeline {

@@ -1,0 +1,8 @@
+#FileInfo {
+    display: flex;
+}
+
+#FileInfo>p {
+    flex: 1 1 auto;
+    display: flex;
+}
