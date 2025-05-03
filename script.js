@@ -1,6 +1,6 @@
 import { SnipFix } from "./SnipFix.js";
 
-const upload = document.getElementById('upload');
+const uploadPage = document.getElementById('UploadPage');
 const editButton = document.getElementById('EditButton');
 const exportButton = document.getElementById('ExportButton');
 const video = document.getElementById("video");
@@ -17,15 +17,15 @@ export function setVideoSrc(url) {
 
 export function setEditorVisibility(visible) {
     if (visible) {
-        upload.hidden = true;
+        uploadPage.style.display = "none";
         programmableStyleSheet.replaceSync("#SnipFixEditor { display: flex; }");
     } else {
-        upload.hidden = false;
+        uploadPage.style.display = "flex";
         programmableStyleSheet.replaceSync("#SnipFixEditor { display: none; }");
     }
 }
 
-upload.addEventListener('change', snipFix.UploadListener.bind(snipFix));
+document.getElementById("Upload").addEventListener('change', snipFix.UploadListener.bind(snipFix));
 
 
 // Update the timeline sliders steps.

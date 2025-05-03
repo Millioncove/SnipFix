@@ -5,6 +5,22 @@ body {
     /*overflow: hidden;*/
 }
 
+/*Just the upload page*/
+#UploadPage {
+    display: flex;
+    height: inherit;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#UploadButton {
+    margin: 0 auto;
+    font-size: xx-large;
+    height: 2em;
+    width: 6em;
+}
+
+/*The actual editor*/
 #SnipFixEditor {
     height: inherit;
     display: none;
@@ -36,7 +52,17 @@ body {
     flex: 1 1 0;
 }
 
-#ProcessingStatus {
+.processing-indicator-container {
+    display: flex;
+    margin: auto;
+    margin-top: 1em;
+}
+
+.processing-indicator {
+    display: none;
+}
+
+.processing-status {
     margin: auto;
     margin-right: 1em;
     color: gray;
@@ -47,8 +73,12 @@ body {
     margin: auto;
     width: min-content;
 }
+
 #ControlsContainer>button {
     width: 6em;
+}
+
+button {
     font-size: xx-large;
     border: none;
     border-radius: 1em;

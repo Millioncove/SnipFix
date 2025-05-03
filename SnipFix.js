@@ -54,7 +54,9 @@ export class SnipFix {
             processingButton.style.display = this.isBusyProcessing ? "flex" : "none";
         }
 
-        document.getElementById("ProcessingStatus").textContent = task.description;
+        for (const processingStatus of document.getElementsByClassName("processing-status")) {
+            processingStatus.textContent = task.description;
+        }
     }
 
     constructor() {
@@ -329,6 +331,8 @@ export class SnipFix {
     async UploadListener(event) {
         const file = event.target.files[0];
         if (!file) return;
+
+        document.getElementById("UploadButton").style.display = "none";
         await this.writeLoudInputVideo(await fetchFile(file));
 
         const data = this.readMediaFile(this.files.silencedInput);
