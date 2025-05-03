@@ -14,6 +14,7 @@ const tasks = Object.freeze({
     REMOVING: Symbol("Removing audio..."),
     ADDING_AUDIO: Symbol("Adding audio..."),
     MERGING: Symbol("Merging audio..."),
+    COMPRESSING: Symbol("Compressing file size...")
 })
 
 export class SnipFix {
@@ -58,6 +59,9 @@ export class SnipFix {
         for (const processingStatus of document.getElementsByClassName("processing-status")) {
             processingStatus.textContent = task.description;
         }
+
+        // Let the user know they don't have to wait for the compressed file.
+        document.getElementById("Hint").style.display = task == tasks.COMPRESSING ? "flex" : "none";
     }
 
     constructor() {
@@ -126,15 +130,10 @@ export class SnipFix {
         for (let i = 0; i < streamNames.length; i++) {
             const stream = streamNames[i];
             await this.#extractAudioStreamFromLoudInput(i);
-
-            const data = this.readMediaFile(this.files.loudInputAudioStreams[i]);
-            const audioBlob = new Blob([data.buffer], { type: 'audio/mpeg' });
-            const audioURL = URL.createObjectURL(audioBlob);
-
+            const audioBlob = this.fileToBlobURL(this.files.loudInputAudioStreams[i], 'audio/mpeg');
             const newAudioTrack = this.timeline.createMediaTrack(stream);
-            newAudioTrack.mediaElement.src = audioURL;
-
-            CreateDownloadLink(icons.AUDIO, `${stream}.aac`, stream, audioURL, audioBlob.size);
+            newAudioTrack.mediaElement.src = audioBlob.url;
+            CreateDownloadLink(icons.AUDIO, `${stream}.aac`, stream, audioBlob.url, audioBlob.size);
         }
         await this.silenceLoudInput();
     }
@@ -204,15 +203,12 @@ export class SnipFix {
                 this.timeline.closestKeyframePtsToEndBound,
                 segmentAudioStreamName);
 
-            const data = this.readMediaFile(segmentAudioStreamName);
-            const audioBlob = new Blob([data.buffer], { type: 'audio/mpeg' });
-            const audioURL = URL.createObjectURL(audioBlob);
-            this.timeline.audioTracks[i].mediaElement.src = audioURL;
+            const audioBlob = this.fileToBlobURL(segmentAudioStreamName, 'audio/mpeg');
+            this.timeline.audioTracks[i].mediaElement.src = audioBlob.url;
         }
 
         await this.#createMergedAudioFile();
         await this.#addAudioStreamsToSegmentBetweenBounds(this.files.segmentBetweenBoundsAudioMergedWell);
-        await this.#CompressSegmentBetweenBounds();
     }
 
     CalculateTargetBitrateFromVideoLength() {
@@ -224,14 +220,14 @@ export class SnipFix {
     }
 
     async #CompressSegmentBetweenBounds() {
-        this.currentTask = tasks.RENDERING;
+        this.currentTask = tasks.COMPRESSING;
         const targetBitrate = Math.floor(this.CalculateTargetBitrateFromVideoLength() * 0.95).toString();
 
         await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsLoud, "-b:v", targetBitrate,
             "-maxrate", targetBitrate, this.files.segmentBetweenBoundsLoudCompressed);
-        const compressedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoudCompressed);
-        const compressedBlob = new Blob([compressedResult.buffer], { type: 'video/mp4' });
-        CreateDownloadLink(icons.VIDEO, "Trimmed-compressed.mp4", "Compressed trimmed video (merged audio)", URL.createObjectURL(compressedBlob), compressedBlob.size);
+
+        const compressedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoudCompressed, 'video/mp4');
+        CreateDownloadLink(icons.VIDEO, "Trimmed-compressed.mp4", "Compressed trimmed video (merged audio)", compressedResult.url, compressedResult.size);
     }
 
     async #extractAudioStreamFromLoudInput(streamIndex) {
@@ -257,10 +253,8 @@ export class SnipFix {
         await this.#ffmpeg.run("-i", this.files.loudInput, "-c", "copy", "-an", this.files.silencedInput);
 
         // Create download link for silent video.
-        const silencedResult = this.readMediaFile(this.files.silencedInput);
-        const silencedBlob = new Blob([silencedResult.buffer], { type: 'video/mp4' });
-        const silencedResultURL = URL.createObjectURL(silencedBlob);
-        CreateDownloadLink(icons.VIDEO, 'video-silenced.mp4', 'Silent video', silencedResultURL, silencedBlob.size);
+        const silenced = this.fileToBlobURL(this.files.silencedInput, 'video/mp4');
+        CreateDownloadLink(icons.VIDEO, 'video-silenced.mp4', 'Silent video', silenced.url, silenced.size);
     }
 
     async #addAudioStreamsToSegmentBetweenBounds(...audioFileNames) {
@@ -307,27 +301,27 @@ export class SnipFix {
         const uint8Array = await blobToUint8Array(output.blob);
         await this.#ffmpeg.FS('writeFile', this.files.segmentBetweenBoundsAudioMergedUselessWAV, uint8Array);
         await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsAudioMergedUselessWAV, this.files.segmentBetweenBoundsAudioMergedWell);
-        const mergedResult = this.readMediaFile(this.files.segmentBetweenBoundsAudioMergedWell);
-        const mergedBlob = new Blob([mergedResult.buffer], { type: 'video/mp4' });
-        CreateDownloadLink(icons.AUDIO, "mergedAudio.wav", "Merged audio", URL.createObjectURL(mergedBlob), mergedBlob.size);
+        const mergedBlob = this.fileToBlobURL(this.files.segmentBetweenBoundsAudioMergedWell);
+        CreateDownloadLink(icons.AUDIO, "mergedAudio.wav", "Merged audio", mergedBlob.url, mergedBlob.size);
     }
 
     async PerformMainEdit() {
         console.log(this.CalculateTargetBitrateFromVideoLength());
         await this.renderSegmentBetweenBounds();
 
-        const data = this.readMediaFile(this.files.segmentBetweenBoundsSilent);
-        const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-        const trimResult = URL.createObjectURL(videoBlob);
+        setVideoSrc(this.fileToBlobURL(this.files.segmentBetweenBoundsSilent).url);
 
-        setVideoSrc(trimResult);
-        this.timeline.colorizeAllClips();
+        const trimmedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoud);
+        CreateDownloadLink(icons.VIDEO, 'trimmed.mp4', 'Trimmed video (merged audio)', trimmedResult.url, trimmedResult.size);
 
-        const trimmedResult = this.readMediaFile(this.files.segmentBetweenBoundsLoud);
-        const finalBlob = new Blob([trimmedResult.buffer], { type: 'video/mp4' });
-        const trimmedResultURL = URL.createObjectURL(finalBlob);
+        await this.#CompressSegmentBetweenBounds();
+    }
 
-        CreateDownloadLink(icons.VIDEO, 'trimmed.mp4', 'Trimmed video (merged audio)', trimmedResultURL, finalBlob.size);
+    fileToBlobURL(filename, MIMEType) {
+        const data = this.readMediaFile(filename);
+        const fileBlob = new Blob([data.buffer], { type: MIMEType });
+        const blobURL = URL.createObjectURL(fileBlob);
+        return { url: blobURL, size: fileBlob.size };
     }
 
     async UploadListener(event) {
@@ -337,11 +331,7 @@ export class SnipFix {
         document.getElementById("UploadButton").style.display = "none";
         await this.writeLoudInputVideo(await fetchFile(file));
 
-        const data = this.readMediaFile(this.files.silencedInput);
-        const silentVideoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-        const silentVideoURL = URL.createObjectURL(silentVideoBlob);
-
-        setVideoSrc(silentVideoURL);
+        setVideoSrc(this.fileToBlobURL(this.files.silencedInput, 'video/mp4').url);
         this.timeline.videoTrack = this.timeline.createMediaTrack("Video", video);
 
         await this.findKeyframePtsAroundTime(0, 1)
