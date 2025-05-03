@@ -60,6 +60,12 @@ export class SnipFix {
             processingStatus.textContent = task.description;
         }
 
+        for (const bound of document.getElementsByClassName("bound")) {
+            bound.disabled = this.isBusyProcessing;
+        }
+        const cursor = this.isBusyProcessing ? "not-allowed" : "pointer";
+        this.#programmableStyleSheet.replaceSync(`.timeline-slider::-moz-range-thumb { cursor: ${cursor}; }`)
+
         // Let the user know they don't have to wait for the compressed file.
         document.getElementById("Hint").style.display = task == tasks.COMPRESSING ? "flex" : "none";
     }
@@ -68,10 +74,10 @@ export class SnipFix {
         this.#ffmpeg = createFFmpeg({ log: false });
         this.#ffmpeg.setLogger(this.#ffmpegLogHandler.bind(this)); // javascript is massive feces
         this.#crunker = new Crunker(); // TODO: Investigate if sample rate matters here.
-        this.currentTask = tasks.NONE;
         this.#programmableStyleSheet = new CSSStyleSheet();
         document.adoptedStyleSheets.push(this.#programmableStyleSheet);
         this.timeline = new Timeline();
+        this.currentTask = tasks.NONE;
 
         // Keep video within bounds when bounds or playhead are moved.
         // Also make sure the inside of the bounds has a slight color shift.
@@ -86,7 +92,11 @@ export class SnipFix {
         }
 
         // Seek in the video by dragging the playhead.
-        this.timeline.playhead.addEventListener("input", () => { this.timeline.pause(); this.timeline.syncMediaToPlayhead(); });
+        this.timeline.playhead.addEventListener("input", () => {
+            this.timeline.pause();
+            this.timeline.syncMediaToPlayhead();
+            this.timeline.updateCurrentTimeIndicator();
+        });
 
         // Add functionality to play button(s).
         for (const button of document.getElementsByClassName("play-pause")) {

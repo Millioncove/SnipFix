@@ -1,22 +1,29 @@
 #Track {
     height: 100%;
-    background-color: #2222;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+    position: relative;
 }
 
 #Clip {
     width: -moz-available;
-    border-radius: 0.4em;
+    border-radius: 0.4rem;
     position: inherit;
     width: 100%;
     height: 100%;
     pointer-events: none;
-    background: linear-gradient(to right, blue, red);
+    background: linear-gradient(to right, #3a86ff, #8338ec);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 #TrackName {
     position: absolute;
     font-style: italic;
-    color: #0005;
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0.75rem;
+    z-index: 2;
 }
 
 input[type=range][orient=vertical] {
@@ -24,7 +31,6 @@ input[type=range][orient=vertical] {
     background: transparent;
     writing-mode: vertical-lr;
     direction: rtl;
-    /*appearance: slider-vertical;*/
     width: 100%;
     height: 100%;
     vertical-align: bottom;
@@ -45,10 +51,16 @@ input[type=range]::-moz-range-track {
     height: 0.2rem;
     width: 100%;
     border-radius: 1rem;
-    background: #fffa;
+    background: rgba(255, 255, 255, 0.8);
     cursor: pointer;
     pointer-events: auto;
     z-index: 10;
+    transition: all 0.2s ease;
+}
+
+#Volume::-moz-range-thumb:hover {
+    background: white; 
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
 
 .hidden {

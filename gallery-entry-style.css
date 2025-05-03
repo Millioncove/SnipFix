@@ -1,15 +1,84 @@
 #EntryContainer {
-    margin: 1em;
+    margin: 0.75rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+#EntryContainer:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+#FileIcon {
+    color: #3a86ff;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
 #EntryTitle {
-    display: inline;
-}
-#FileInfo {
-    display: flex;
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+    color: #212529;
 }
 
-#FileInfo>p {
-    flex: 1 1 auto;
+#FileInfo {
     display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+#FileInfo > p {
+    flex: 1 1 auto;
+    margin: 0.25rem 0;
+}
+
+#ButtonContainer {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+#DownloadButton, #DeleteButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#DownloadButton {
+    background-color: #3a86ff;
+    color: white;
+}
+
+#DownloadButton:hover {
+    background-color: #2563eb;
+}
+
+#DeleteButton {
+    background-color: #e9ecef;
+    color: #495057;
+    border: none;
+}
+
+#DeleteButton:hover {
+    background-color: #ff006e;
+    color: white;
+}
+
+#DeleteButton i, #DownloadButton i {
+    margin-left: 0.25rem;
 }

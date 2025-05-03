@@ -11,14 +11,43 @@
 
 <body>
     <div id="UploadPage">
-        <div class="flex-margin"></div>
-        <input type="file" id="Upload" accept="video/*" style="display: none;">
-        <button id="UploadButton" onclick="document.getElementById('Upload').click();">Browse...</button>
-        <div class="processing-indicator-container">
-            <h2 class=" processing-status processing-indicator">Editor ready!</h2>
-            <i class="processing-indicator process-spinner fa fa-cog fa-spin fa-3x"></i>
+        <div class="upload-header">
+            <h1>SnipFix Video Editor</h1>
+            <p class="upload-subtitle">Simple video trimming in your browser</p>
         </div>
-        <div class="flex-margin"></div>
+        
+        <div class="upload-container">
+            <div class="upload-icon">
+                <i class="fa fa-cloud-upload fa-4x"></i>
+            </div>
+        
+            <p class="upload-text">Upload your video to get started</p>
+        
+            <input type="file" id="Upload" accept="video/*" style="display: none;">
+            <button id="UploadButton" onclick="document.getElementById('Upload').click();">
+                <i class="fa fa-file-video-o"></i> Browse Files
+            </button>
+            <div class="processing-indicator processing-indicator-container">
+                <h2 class="processing-indicator processing-status">Editor ready!</h2>
+                <i class="processing-indicator process-spinner fa fa-cog fa-spin fa-3x"></i>
+            </div>
+            <p class="upload-hint">Supported formats: MP4, WebM, MOV, AVI</p>
+            </div>
+            
+            <div class="feature-list">
+                <div class="feature-item">
+                    <i class="fa fa-scissors"></i>
+                    <span>Trim videos</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fa fa-volume-up"></i>
+                    <span>Adjust audio</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fa fa-download"></i>
+                    <span>Easy export</span>
+                </div>
+            </div>
     </div>
     
     <div id="FileGallery">
@@ -61,14 +90,26 @@
     
         <div id="ControlsContainer">
             <div class="flex-margin">
-                <div class="flex-margin"></div>
-                <h2 class="processing-status processing-indicator">Editor ready!</h2>
-                <i class="processing-indicator process-spinner fa fa-cog fa-spin fa-3x"></i>
-                <div class="flex-margin"></div>
-            </div>
-            <button id="EditButton" disabled class="video-processing-starter">Edit</button>
-            <div class="flex-margin">
+                <div class="controls-left">
+                    <div class="processing-status-wrapper">
+                        <h2 class="processing-status processing-indicator">Editor ready!</h2>
+                        <i class="processing-indicator process-spinner fa fa-cog fa-spin fa-2x"></i>
+                        </div>
+                </div>
+                </div>
+                <div class="controls-center">
+                    <button id="EditButton" disabled class="video-processing-starter">
+                        <i class="fa fa-scissors"></i> Trim Video
+                    </button>
                 <p id="Hint">Hint: You can already download the uncompressed version!</p>
+            </div>
+            
+            <div class="flex-margin">
+                <div class="controls-right">
+                    <div class="time-display">
+                        <span id="currentTime">00:00</span> / <span id="totalTime">00:00</span>
+                    </div>
+                </div>
             </div>
         </div>
     

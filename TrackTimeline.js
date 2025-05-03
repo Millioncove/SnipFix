@@ -9,7 +9,16 @@ export class Timeline {
     keyframePts = [];
     #currentTime = null;
     frameRate;
-    duration;
+    #duration;
+
+    get duration() {
+        return this.#duration;
+    }
+
+    set duration(value) {
+        this.#duration = value;
+        document.getElementById("totalTime").textContent = this.minutesAndSecond(value);
+    }
 
     get audioTracks() {
         const foundAudioTracks = [];
@@ -27,7 +36,13 @@ export class Timeline {
         for (const track of this.allTracks) {
             track.mediaElement.currentTime = this.#currentTime;
         }
-        this.syncPlayheadToMedia();
+    }
+
+    minutesAndSecond(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        let seconds = Math.floor(totalSeconds) % 60;
+        if (seconds < 10) { seconds = "0" + seconds; }
+        return minutes + ":" + seconds
     }
 
     get currentFrameIndex() {
@@ -76,6 +91,7 @@ export class Timeline {
             // calculating currentTime instead of reading from media.
             this.#currentTime = this.videoTrack.mediaElement.currentTime;
             this.syncPlayheadToMedia();
+            this.updateCurrentTimeIndicator();
             this.keepMediaWithinBounds();
         }, 1.0 / this.frameRate);
 
@@ -136,6 +152,10 @@ export class Timeline {
     // Sync the video frame with the playhead.
     syncMediaToPlayhead() {
         this.currentFrameIndex = this.playhead.value;
+    }
+
+    updateCurrentTimeIndicator() {
+        document.getElementById("currentTime").textContent = this.minutesAndSecond(this.currentTime);
     }
 
     createMediaTrack(trackName, mediaElement) {
