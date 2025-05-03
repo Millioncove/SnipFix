@@ -2,9 +2,11 @@ html,
 body {
     margin: 0;
     height: 100%;
+    width: 100%;
     /*overflow: hidden;*/
     display: flex;
         justify-content: center;
+    background: linear-gradient(90deg, #1CB5E00A 0%, #0019ff26 100%);
 }
 
 /*Just the upload page*/
@@ -89,7 +91,7 @@ body {
 }
 
 .process-spinner {
-    color: lightgray;
+    color: gray;
     margin: auto;
     width: min-content;
 }
@@ -107,7 +109,7 @@ button {
 #TracksContainer {
     flex: 1 0 31%;
     position: relative;
-    background-color: rgba(0, 81, 255, 0.575);
+    background-color: #2222;
     display: flex;
     overflow: auto;
 }
