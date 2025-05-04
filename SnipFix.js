@@ -131,14 +131,12 @@ export class SnipFix {
 
     // Writes a video file to the ffmpeg file system and extracts audio streams into files.
     async writeLoudInputVideo(fileData) {
-
-        console.log(fileData);
         this.#ffmpeg.FS('writeFile', this.files.loudInput, fileData);
 
         var streamNames = extractAudioStreamNamesFromFileData(fileData);
 
-        for (let i = 0; i < streamNames.length; i++) {
-            const stream = streamNames[i];
+        for (let i = 0; i < streamNames.length || i == 0; i++) {
+            const stream = streamNames.length == 0 ? "Audio" : streamNames[i];
             await this.#extractAudioStreamFromLoudInput(i);
             const audioBlob = this.fileToBlobURL(this.files.loudInputAudioStreams[i], 'audio/mpeg');
             const newAudioTrack = this.timeline.createMediaTrack(stream);
