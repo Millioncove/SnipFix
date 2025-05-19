@@ -115,9 +115,12 @@
     
         <div id="TracksContainer">
             <div id="TracksTimeline">
+                <datalist id="KeyFrameTimes">
+                </datalist>
+
                 <input type="range" id="Playhead" class="timeline-slider">
-                <input type="range" id="TimelineStartBound" class="timeline-slider bound">
-                <input type="range" id="TimelineEndBound" class="timeline-slider bound">
+                <input type="range" id="TimelineStartBound" class="timeline-slider bound" list="KeyFrameTimes">
+                <input type="range" id="TimelineEndBound" class="timeline-slider bound" list="KeyFrameTimes">
 
                 <template id="media-track-template">
                     <link rel="stylesheet" href="media-track-style.css">

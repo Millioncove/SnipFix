@@ -5,6 +5,8 @@ import { setVideo, setEditorVisibility } from "./script.js";
 import { icons } from "./GalleryEntry.js";
 const { createFFmpeg, fetchFile } = FFmpeg;
 
+const debug = false;
+
 const tasks = Object.freeze({
     NONE: Symbol("none"),
     WRITING: Symbol("Writing to file system..."),
@@ -23,6 +25,7 @@ export class SnipFix {
     #currentTask;
     #programmableStyleSheet;
     #keyframeSearchStartTime;
+    #snapToKeyframes = true;
     files = {
         loudInput: "loudInput.mp4",
         loudInputAudioStreams: [],
@@ -70,6 +73,16 @@ export class SnipFix {
         document.getElementById("Hint").style.display = task == tasks.COMPRESSING ? "flex" : "none";
     }
 
+    get snapToKeyframes() {
+        return this.#snapToKeyframes;
+    }
+
+    set snapToKeyframes(yesOrNo) {
+        for (const bound of document.getElementsByClassName("bound")) {
+            bound.attributes.list.value = yesOrNo ? "KeyFrameTimes" : "";
+        }
+    }
+
     constructor() {
         this.#ffmpeg = createFFmpeg({ log: false });
         this.#ffmpeg.setLogger(this.#ffmpegLogHandler.bind(this)); // javascript is massive feces
@@ -79,16 +92,15 @@ export class SnipFix {
         this.timeline = new Timeline();
         this.currentTask = tasks.NONE;
 
+        if (debug) {
+            window.ffmpeg = this.#ffmpeg;
+            window.snipFix = this;
+        }
+
         // Keep video within bounds when bounds or playhead are moved.
         // Also make sure the inside of the bounds has a slight color shift.
         for (const slider of document.getElementsByClassName("timeline-slider")) {
             slider.addEventListener("input", this.timeline.keepMediaWithinBounds.bind(this.timeline));
-        }
-
-        for (const bound of document.getElementsByClassName("bound")) {
-            bound.addEventListener("mouseup", (e) => {
-                this.findKeyframePtsAroundTime(this.timeline.timeOfFrame(e.target.value), 1.6);
-            });
         }
 
         // Seek in the video by dragging the playhead.
@@ -153,13 +165,15 @@ export class SnipFix {
     }
 
     #extractPtsTimeFromShowinfoExcerpt(showinfoFrameOutput) {
+        const keyframesListElem = document.getElementById("KeyFrameTimes");
         let frameInfoPoints = showinfoFrameOutput.split(" ").filter(str => str.length > 0);
-
         for (const infoPoint of frameInfoPoints) {
             if (infoPoint.startsWith("pts_time:")) {
                 const foundKeyframePtsTime = this.#keyframeSearchStartTime + parseFloat(infoPoint.substring("pts_time:".length));
-                if (!this.timeline.keyframePts.includes(foundKeyframePtsTime)) {
+                const oneFrameDuration = 1 / this.timeline.frameRate;
+                if (!this.timeline.keyframePts.some(pts => Math.abs(pts - foundKeyframePtsTime) < oneFrameDuration)) {
                     this.timeline.keyframePts.push(foundKeyframePtsTime);
+                    keyframesListElem.appendChild(new Option("", Math.round(this.timeline.frameRate * foundKeyframePtsTime)));
                 };
             }
         }
@@ -183,21 +197,49 @@ export class SnipFix {
             '-vf', "select='eq(pict_type,I)',showinfo", '-f', 'null', "-")
     }
 
-    async #renderSegmentOfMedia(inputFileName, fromTime, toTime, outputFileName) {
+    async findKeyframePtsFull() {
+        if (this.isBusyProcessing) {
+            console.error("Cannot start keyframe search when busy.");
+            return;
+        }
+
+        this.#keyframeSearchStartTime = 0;
+
+        this.currentTask = tasks.FINDING_KEYFRAMES;
+        await this.#ffmpeg.run('-i', this.files.loudInput, '-vf', "select='eq(pict_type,I)',showinfo", '-f', 'null', "-");
+    }
+
+    async #trimSegmentOfMedia(inputFileName, outputFileName, fromTime = 0, toTime = Infinity) {
         if (this.isBusyProcessing) {
             console.error("Cannot start rendering when busy.");
             return;
         }
 
+        let ss = [];
+        if (fromTime != 0) {
+            ss = ['-ss', fromTime.toString()];
+        }
+
+        let to = [];
+        if (toTime != Infinity) {
+            to = ['-to', toTime.toString()];
+        }
+
         this.currentTask = tasks.RENDERING;
-        await this.#ffmpeg.run('-i', inputFileName, '-ss', fromTime.toString(), '-to', toTime.toString(), "-c", "copy", outputFileName);
+        await this.#ffmpeg.run('-i', inputFileName, ...ss, ...to, "-c", "copy", outputFileName);
     }
 
     async renderSegmentBetweenBounds() {
-        await this.#renderSegmentOfMedia(this.files.silencedInput,
+        let endTime = Infinity;
+        const oneFrameDuration = 1 / this.timeline.frameRate;
+        if (Math.abs(this.timeline.closestKeyframePtsToEndBound - this.timeline.duration) > oneFrameDuration) {
+            endTime = this.timeline.closestKeyframePtsToEndBound;
+        }
+        await this.#trimSegmentOfMedia(this.files.silencedInput,
+            this.files.segmentBetweenBoundsSilent,
             this.timeline.closestKeyframePtsToStartBound,
-            this.timeline.closestKeyframePtsToEndBound,
-            this.files.segmentBetweenBoundsSilent);
+            endTime
+        );
 
         this.files.segmentBetweenBoundsAudioStreams = []; // Remove discarded audio streams if any from previous cuts.
 
@@ -206,10 +248,11 @@ export class SnipFix {
             const segmentAudioStreamName = "segmentBetweenBoundsAudio" + i + ".aac";
             this.files.segmentBetweenBoundsAudioStreams.push(segmentAudioStreamName);
 
-            await this.#renderSegmentOfMedia(audioStreamName,
+            await this.#trimSegmentOfMedia(audioStreamName,
+                segmentAudioStreamName,
                 this.timeline.closestKeyframePtsToStartBound,
-                this.timeline.closestKeyframePtsToEndBound,
-                segmentAudioStreamName);
+                endTime
+            );
 
             const audioBlob = this.fileToBlobURL(segmentAudioStreamName, 'audio/mpeg');
             this.timeline.audioTracks[i].mediaElement.src = audioBlob.url;
@@ -314,16 +357,17 @@ export class SnipFix {
     }
 
     async PerformMainEdit() {
-        console.log(this.CalculateTargetBitrateFromVideoLength());
         await this.renderSegmentBetweenBounds();
 
         this.timeline.removeAllTracks();
-        setVideo(this.fileToBlobURL(this.files.segmentBetweenBoundsLoud).url);
-
         const trimmedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoud);
+        setVideo(trimmedResult.url);
+
         CreateDownloadLink(icons.VIDEO, 'trimmed.mp4', 'Trimmed video (merged audio)', trimmedResult.url, trimmedResult.size);
 
-        await this.#CompressSegmentBetweenBounds();
+        if (trimmedResult.size >= 10 * (2 ** 20)) {
+            await this.#CompressSegmentBetweenBounds();
+        }
     }
 
     fileToBlobURL(filename, MIMEType) {
@@ -342,8 +386,11 @@ export class SnipFix {
 
         setVideo(this.fileToBlobURL(this.files.silencedInput, 'video/mp4').url);
 
-        await this.findKeyframePtsAroundTime(0, 1)
-        await this.findKeyframePtsAroundTime(this.timeline.duration, 1)
+        await this.findKeyframePtsFull();
+        if (this.timeline.keyframePts.length < 2) {
+            console.warn("Not even 2 keyframes in this file... Disabling key frame snap.")
+            this.snapToKeyframes = false;
+        }
 
         setEditorVisibility(true);
     }
