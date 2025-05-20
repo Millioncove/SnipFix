@@ -216,6 +216,7 @@ export class Timeline {
         if (this.#currentTime < clipStartTime) {
             this.currentFrameIndex = this.startBound.value;
         }
+        this.updateCurrentTimeIndicator();
         this.colorizeAllClips();
     }
 }
