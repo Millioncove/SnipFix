@@ -8,7 +8,7 @@ export class Timeline {
     allTracks = [];
     keyframePts = [];
     #currentTime = null;
-    frameRate;
+    #frameRate = undefined;
     #duration;
 
     get duration() {
@@ -18,6 +18,7 @@ export class Timeline {
     set duration(value) {
         this.#duration = value;
         document.getElementById("totalTime").textContent = this.minutesAndSecond(value);
+        this.resizeBoundRanges();
     }
 
     get audioTracks() {
@@ -57,6 +58,12 @@ export class Timeline {
 
     get boundStartTime() { return this.startBound.value / this.frameRate; }
     get boundEndTime() { return this.endBound.value / this.frameRate; }
+
+    get frameRate() { return this.#frameRate; }
+    set frameRate(value) {
+        this.#frameRate = value;
+        this.resizeBoundRanges();
+    }
 
     constructor() {
         this.Container = document.getElementById('TracksTimeline');
@@ -218,5 +225,15 @@ export class Timeline {
         }
         this.updateCurrentTimeIndicator();
         this.colorizeAllClips();
+    }
+
+    // Set number of slider steps to amount of frames in video.
+    // And also move the bounds to the absolute start and end of the video.
+    resizeBoundRanges() {
+        for (const slider of document.getElementsByClassName("timeline-slider")) {
+            slider.max = Math.round((this.duration * this.frameRate)) - 1; // Number of frames in video (-1 since the first frame has index 0)
+        }
+        this.startBound.value = 0;
+        this.endBound.value = this.endBound.max;
     }
 }

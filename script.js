@@ -33,17 +33,7 @@ document.getElementById("Upload").addEventListener('change', snipFix.UploadListe
 
 // Update the timeline sliders steps.
 video.addEventListener('loadedmetadata', (event) => {
-    // TODO: Actually get the framerate instead of assuming 60.
-    console.warn("Should not assume framerate of 60 fps but I do right now!");
-    snipFix.timeline.frameRate = 60.0;
     snipFix.timeline.duration = event.target.duration;
-
-    // Set number of slider steps to amount of frames in video.
-    for (const slider of document.getElementsByClassName("timeline-slider")) {
-        slider.max = Math.round((snipFix.timeline.duration * snipFix.timeline.frameRate)) - 1; // Number of frames in video (-1 since the first frame has index 0)
-    }
-    snipFix.timeline.startBound.value = 0;
-    snipFix.timeline.endBound.value = snipFix.timeline.endBound.max;
     snipFix.timeline.syncPlayheadToMedia();
     snipFix.timeline.colorizeAllClips();
 });

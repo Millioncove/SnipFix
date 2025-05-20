@@ -122,6 +122,12 @@ export class SnipFix {
 
     #ffmpegLogHandler(typeAndMessage) {
 
+        // Try to scan for the framerate of the video.
+        if (this.timeline.frameRate == undefined && typeAndMessage.message.includes("Video:")) {
+            this.#extractFrameRate(typeAndMessage.message);
+        }
+
+        // Miscellaneous output scanners...
         switch (this.currentTask) {
             // Catch showinfo messages to find keyframe pts times.
             case tasks.FINDING_KEYFRAMES:
@@ -132,6 +138,7 @@ export class SnipFix {
                 break;
         }
 
+        // Scan for end of current "run" call to clear busy state.
         if (typeAndMessage.type == "ffout" && typeAndMessage.message.includes("FFMPEG_END")) {
             if (this.currentTask == tasks.FINDING_KEYFRAMES) { console.log(this.timeline.keyframePts); }
             this.currentTask = tasks.NONE;
@@ -162,6 +169,18 @@ export class SnipFix {
     readMediaFile(file) {
         if (!isStringInObjectWithArrays(file, this.files)) { console.error("Trying to read file that doesn't exist: " + file); return; }
         return this.#ffmpeg.FS('readFile', file);
+    }
+
+    #extractFrameRate(videoMetaData) {
+        const tokens = videoMetaData.replaceAll(",", "").split(" ");
+        const fpsUnitIndex = tokens.indexOf("fps");
+        if (fpsUnitIndex > 1) {
+            const supposedFps = parseInt(tokens[fpsUnitIndex - 1]);
+            if (0 < supposedFps && supposedFps < 9999) {
+                this.timeline.frameRate = supposedFps;
+                console.log(`Found the framerate to be ${supposedFps} fps.`);
+            }
+        }
     }
 
     #extractPtsTimeFromShowinfoExcerpt(showinfoFrameOutput) {
