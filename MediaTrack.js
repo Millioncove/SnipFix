@@ -1,6 +1,23 @@
+export const audioFilePrefix = "AudioTrack_";
+
+const curvePower = 2;
+
 export class MediaTrack extends HTMLElement {
     timeline;
     isVideoTrack = false;
+    name;
+    volumePercentage = 100;
+    #audioCtx;
+    #source;
+    #gainNode;
+    #linearGain = 1.0;
+
+    get linearGain() { return this.#linearGain; }
+
+    // 1.0 is no change in volume. Should be linear?
+    set linearGain(value) {
+        this.#gainNode.gain.value = value;
+    }
 
     constructor(timeline, trackName, videoElementIfVideoTrack) {
         super();
@@ -26,7 +43,7 @@ export class MediaTrack extends HTMLElement {
 
         // Set this track's corresponding media element.
         if (videoElementIfVideoTrack == null) {
-            this.mediaElement = this.shadowRoot.querySelector("#audio");
+            this.#setupGainNode();
         }
         else {
             this.isVideoTrack = true;
@@ -37,8 +54,25 @@ export class MediaTrack extends HTMLElement {
         // Register event handler for volume slider.
         this.shadowRoot.querySelector("#Volume").oninput = (slider) => {
             this.volumePercentage = slider.originalTarget.value;
-            this.mediaElement.volume = Math.min(this.volumePercentage / 100.0, 1);
+            this.linearGain = this.#gainCurve(this.volumePercentage);
         };
+    }
+
+    #setupGainNode() {
+        this.mediaElement = this.shadowRoot.querySelector("#audio");
+        this.#audioCtx = new AudioContext();
+        this.#source = this.#audioCtx.createMediaElementSource(this.mediaElement);
+        this.#gainNode = this.#audioCtx.createGain();
+        this.#source.connect(this.#gainNode);
+        this.#gainNode.connect(this.#audioCtx.destination);
+    }
+
+    // Power function where 0 -> 0.0, 100 -> 1.0, 200 -> 2**curvePower
+    #gainCurve(percentage) {
+        if (percentage == 0) { return 0; }
+        else {
+            return (percentage / 100) ** curvePower;
+        }
     }
 
     colorizeTrack() {

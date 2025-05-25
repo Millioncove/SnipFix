@@ -75,3 +75,7 @@ export function CreateDownloadLink(icon, fileName, linkText, URL, fileSize = 0) 
     }
     new GalleryEntry(URL, icon, fileName, fileSize + sizeUnit, linkText);
 }
+
+export function respace(anyString) {
+    return anyString.replace(" ", "_sp_");
+}

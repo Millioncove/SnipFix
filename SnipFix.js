@@ -1,8 +1,9 @@
 import { Timeline } from "./TrackTimeline.js";
-import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink } from "./Utils.js"
+import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink, respace } from "./Utils.js"
 import Crunker from 'https://unpkg.com/crunker@latest/dist/crunker.esm.js';
 import { setVideo, setEditorVisibility } from "./script.js";
 import { icons } from "./GalleryEntry.js";
+import { audioFilePrefix } from "./MediaTrack.js";
 const { createFFmpeg, fetchFile } = FFmpeg;
 
 const debug = false;
@@ -16,7 +17,8 @@ const tasks = Object.freeze({
     REMOVING: Symbol("Removing audio..."),
     ADDING_AUDIO: Symbol("Adding audio..."),
     MERGING: Symbol("Merging audio..."),
-    COMPRESSING: Symbol("Compressing file size...")
+    COMPRESSING: Symbol("Compressing file size..."),
+    SCALING: Symbol("Scaling Audio...")
 })
 
 export class SnipFix {
@@ -32,6 +34,7 @@ export class SnipFix {
         silencedInput: "silencedInput.mp4",
         segmentBetweenBoundsSilent: "segmentBetweenBoundsSilent.mp4",
         segmentBetweenBoundsAudioStreams: [],
+        segmentBetweenBoundsAudioStreamsVolumeAdjusted: [],
         segmentBetweenBoundsAudioMergedUselessWAV: "segmentBetweenBoundsMergedAudio.wav",
         segmentBetweenBoundsAudioMergedWell: "segmentBetweenBoundsMergedAudio.aac",
         segmentBetweenBoundsLoud: "segmentBetweenBoundsLoud.mp4",
@@ -155,20 +158,21 @@ export class SnipFix {
         var streamNames = extractAudioStreamNamesFromFileData(fileData);
 
         for (let i = 0; i < streamNames.length || i == 0; i++) {
-            const stream = streamNames.length == 0 ? "Audio" : streamNames[i];
-            await this.#extractAudioStreamFromLoudInput(i);
+            const streamName = streamNames.length == 0 ? "Audio" : streamNames[i];
+            await this.#extractAudioStreamFromLoudInput(i, streamName);
             const audioBlob = this.fileToBlobURL(this.files.loudInputAudioStreams[i], 'audio/mpeg');
-            const newAudioTrack = this.timeline.createMediaTrack(stream);
+            const newAudioTrack = this.timeline.createMediaTrack(streamName);
             newAudioTrack.mediaElement.src = audioBlob.url;
-            CreateDownloadLink(icons.AUDIO, `${stream}.aac`, stream, audioBlob.url, audioBlob.size);
+            CreateDownloadLink(icons.AUDIO, `${streamName}.aac`, streamName, audioBlob.url, audioBlob.size);
         }
         await this.silenceLoudInput();
     }
 
     // Returns the file data of a file if it exists in the ffmpeg file system. 
-    readMediaFile(file) {
-        if (!isStringInObjectWithArrays(file, this.files)) { console.error("Trying to read file that doesn't exist: " + file); return; }
-        return this.#ffmpeg.FS('readFile', file);
+    readMediaFile(fileName) {
+        fileName = respace(fileName);
+        if (!isStringInObjectWithArrays(fileName, this.files)) { console.error("Trying to read file that doesn't exist: " + fileName); return; }
+        return this.#ffmpeg.FS('readFile', fileName);
     }
 
     #extractFrameRate(videoMetaData) {
@@ -264,7 +268,7 @@ export class SnipFix {
 
         for (let i = 0; i < this.files.loudInputAudioStreams.length; i++) {
             const audioStreamName = this.files.loudInputAudioStreams[i];
-            const segmentAudioStreamName = "segmentBetweenBoundsAudio" + i + ".aac";
+            const segmentAudioStreamName = respace(audioStreamName.replace(".aac", "") + "BetweenBounds.aac");
             this.files.segmentBetweenBoundsAudioStreams.push(segmentAudioStreamName);
 
             await this.#trimSegmentOfMedia(audioStreamName,
@@ -277,6 +281,7 @@ export class SnipFix {
             this.timeline.audioTracks[i].mediaElement.src = audioBlob.url;
         }
 
+        await this.#scaleAudioFiles();
         await this.#createMergedAudioFile();
         await this.#addAudioStreamsToSegmentBetweenBounds(this.files.segmentBetweenBoundsAudioMergedWell);
     }
@@ -293,23 +298,23 @@ export class SnipFix {
         this.currentTask = tasks.COMPRESSING;
         const targetBitrate = Math.floor(this.CalculateTargetBitrateFromVideoLength() * 0.95).toString();
 
-        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsLoud, "-b:v", targetBitrate,
-            "-maxrate", targetBitrate, this.files.segmentBetweenBoundsLoudCompressed);
+        await this.#ffmpeg.run("-i", respace(this.files.segmentBetweenBoundsLoud), "-b:v", targetBitrate,
+            "-maxrate", targetBitrate, respace(this.files.segmentBetweenBoundsLoudCompressed));
 
         const compressedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoudCompressed, 'video/mp4');
         CreateDownloadLink(icons.VIDEO, "Trimmed-compressed.mp4", "Compressed trimmed video (merged audio)", compressedResult.url, compressedResult.size);
     }
 
-    async #extractAudioStreamFromLoudInput(streamIndex) {
+    async #extractAudioStreamFromLoudInput(streamIndex, nameForFile) {
         if (this.isBusyProcessing) {
             console.error("Cannot start audio extraction when busy.");
             return;
         }
 
         this.currentTask = tasks.EXTRACTING;
-        const newAudioStreamFileName = "loudInputAudio" + streamIndex + ".aac";
+        const newAudioStreamFileName = respace(audioFilePrefix + nameForFile + ".aac");
         this.files.loudInputAudioStreams.push(newAudioStreamFileName);
-        await this.#ffmpeg.run("-i", this.files.loudInput, "-filter:a", "loudnorm", "-map", "0:a:" + streamIndex.toString(), /*"-c", "copy",*/ newAudioStreamFileName);
+        await this.#ffmpeg.run("-i", respace(this.files.loudInput), "-filter:a", "loudnorm", "-map", "0:a:" + streamIndex.toString(), /*"-c", "copy",*/ respace(newAudioStreamFileName));
     }
 
     // Creates a silent version of the input video file.
@@ -343,26 +348,30 @@ export class SnipFix {
         await this.#ffmpeg.run(...allFlags);
     }
 
-    // Was supposed to merge all the audio streams of a video file into a single audio stream,
-    // but the amix filter does not work in ffmpeg.wasm for some reason :(
-    async #combineAudioStreamsOfSegmentBetweenBounds() {
-        let streamFlags = "";
-        for (let i = 0; i < this.files.segmentBetweenBoundsAudioStreams.length; i++) {
-            streamFlags += `[0:a:${i}]`;
-        }
+    async #scaleAudioFiles() {
+        for (const audioFileName of this.files.segmentBetweenBoundsAudioStreams) {
+            const correspondingTrack = this.timeline.audioTracks.find((track) => audioFileName.includes(respace(track.name)));
+            if (correspondingTrack != undefined) {
 
-        const allFlags = `-i ${this.files.segmentBetweenBoundsLoud} -filter_complex '${streamFlags}amix=inputs=${this.files.segmentBetweenBoundsAudioStreams.length.toString()}:duration=longest[aout]' -map 0:v -map '[aout]' -c:v copy -ac 2 ${this.files.segmentBetweenBoundsFinal}`.split(" ");
-        this.currentTask = tasks.MERGING;
-        await this.#ffmpeg.run(...allFlags);
+                const volumeFactor = correspondingTrack.linearGain;
+                const scaledFileName = respace(audioFileName.replace(".aac", "") + "Scaled.aac");
+
+                this.currentTask = tasks.SCALING;
+                await this.#ffmpeg.run("-i", audioFileName, "-filter:a", `volume=${volumeFactor}`, scaledFileName);
+                this.files.segmentBetweenBoundsAudioStreamsVolumeAdjusted.push(scaledFileName);
+            }
+            else {
+                this.files.segmentBetweenBoundsAudioStreamsVolumeAdjusted.push(audioFileName);
+            }
+        }
     }
 
     async #createMergedAudioFile() {
         const dataOfAudioFiles = [];
-        for (const audioFileName of this.files.segmentBetweenBoundsAudioStreams) {
+        for (const audioFileName of this.files.segmentBetweenBoundsAudioStreamsVolumeAdjusted) {
             dataOfAudioFiles.push(this.readMediaFile(audioFileName));
         }
 
-        console.log(dataOfAudioFiles[0].buffer)
         const buffers = await Promise.all(
             Array.from(dataOfAudioFiles).map(async (file) => this.#crunker._context.decodeAudioData(file.buffer))
         );
