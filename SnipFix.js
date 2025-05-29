@@ -1,6 +1,6 @@
 import { Timeline } from "./TrackTimeline.js";
 import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, CreateDownloadLink, respace } from "./Utils.js"
-import { setVideo, setEditorVisibility } from "./script.js";
+import { setVideo, setEditorVisibility, updateProgress } from "./script.js";
 import { icons } from "./GalleryEntry.js";
 import { audioFilePrefix } from "./MediaTrack.js";
 const { createFFmpeg, fetchFile } = FFmpeg;
@@ -26,6 +26,7 @@ const tasks = Object.freeze({
 export class SnipFix {
     #ffmpeg;
     #currentTask;
+    #progress = 0.0;
     #programmableStyleSheet;
     #keyframeSearchStartTime;
     #snapToKeyframes = true;
@@ -104,9 +105,19 @@ export class SnipFix {
         }
     }
 
+    get progress() {
+        return this.#progress;
+    }
+
+    set progress(value) {
+        this.#progress = value;
+        updateProgress(this.#progress);
+    }
+
     constructor() {
         this.#ffmpeg = createFFmpeg({ log: false });
         this.#ffmpeg.setLogger(this.#ffmpegLogHandler.bind(this)); // javascript is massive feces
+        this.#ffmpeg.setProgress(({ ratio }) => { this.progress = ratio; });
         this.#programmableStyleSheet = new CSSStyleSheet();
         document.adoptedStyleSheets.push(this.#programmableStyleSheet);
         this.timeline = new Timeline();

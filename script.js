@@ -2,10 +2,10 @@ import { SnipFix } from "./SnipFix.js";
 
 const uploadPage = document.getElementById('UploadPage');
 const editButton = document.getElementById('EditButton');
-const exportButton = document.getElementById('ExportButton');
 const video = document.getElementById("video");
-const editor = document.getElementById("SnipFixEditor");
 const programmableStyleSheet = new CSSStyleSheet();
+const progressBarContainer = document.getElementById('ProgressBarContainer');
+const progressBar = document.getElementById('ProgressBar');
 document.adoptedStyleSheets.push(programmableStyleSheet);
 
 const snipFix = new SnipFix(programmableStyleSheet);
@@ -30,6 +30,12 @@ export function setEditorVisibility(visible) {
 
 document.getElementById("Upload").addEventListener('change', snipFix.UploadListener.bind(snipFix));
 
+export function updateProgress(ratio) {
+    const validPercentage = Math.min(Math.max(ratio * 100, 0), 100); // Ensure 0-100
+    progressBar.style.width = validPercentage + '%';
+    progressBar.setAttribute('aria-valuenow', validPercentage);
+    progressBarContainer.style.display = (validPercentage == 0 || validPercentage == 100 ? "none" : "inherit");
+}
 
 // Update the timeline sliders steps.
 video.addEventListener('loadedmetadata', (event) => {
