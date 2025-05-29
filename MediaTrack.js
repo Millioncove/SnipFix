@@ -16,7 +16,8 @@ export class MediaTrack extends HTMLElement {
 
     // 1.0 is no change in volume. Should be linear?
     set linearGain(value) {
-        this.#gainNode.gain.value = value;
+        this.#linearGain = value;
+        this.#gainNode.gain.value = this.#linearGain;
     }
 
     constructor(timeline, trackName, videoElementIfVideoTrack) {
