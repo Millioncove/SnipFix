@@ -19,12 +19,7 @@ Their respective copyright notices, if any, are listed below.
    (Licensed under the MIT License)
    https://github.com/gzuidhof/coi-serviceworker
 
-3. Crunker
-   Copyright (c) 2017 Jack Edgson
-   (Licensed under the MIT License)
-   https://github.com/jaggad/crunker
-
-4. Font Awesome by Dave Gandy 
+3. Font Awesome by Dave Gandy 
    (Version 4)
    https://fontawesome.com/v4/license/
 ---

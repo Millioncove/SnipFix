@@ -1,12 +1,14 @@
 import { Timeline } from "./TrackTimeline.js";
-import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, blobToUint8Array, CreateDownloadLink, respace } from "./Utils.js"
-import Crunker from 'https://unpkg.com/crunker@latest/dist/crunker.esm.js';
+import { extractAudioStreamNamesFromFileData, isStringInObjectWithArrays, CreateDownloadLink, respace } from "./Utils.js"
 import { setVideo, setEditorVisibility } from "./script.js";
 import { icons } from "./GalleryEntry.js";
 import { audioFilePrefix } from "./MediaTrack.js";
 const { createFFmpeg, fetchFile } = FFmpeg;
 
 const debug = false;
+
+const internalAudioFormat = ".aac";
+const syncingFlags = ["-copyts", "-start_at_zero", "-avoid_negative_ts", "make_zero"];
 
 const tasks = Object.freeze({
     NONE: Symbol("none"),
@@ -23,7 +25,6 @@ const tasks = Object.freeze({
 
 export class SnipFix {
     #ffmpeg;
-    #crunker;
     #currentTask;
     #programmableStyleSheet;
     #keyframeSearchStartTime;
@@ -32,13 +33,12 @@ export class SnipFix {
         loudInput: "loudInput.mp4",
         loudInputAudioStreams: [],
         silencedInput: "silencedInput.mp4",
+        segmentBetweenBoundsOfOriginal: "segmentBetweenBoundsOfOriginal.mp4",
+        segmentBetweenBoundsOfOriginalVolumeAdjusted: "segmentBetweenBoundsOfOriginalVolumeAdjusted.mp4",
+        segmentBetweenBoundsOfOriginalMerged: "segmentBetweenBoundsOfOriginalMerged.mp4",
         segmentBetweenBoundsSilent: "segmentBetweenBoundsSilent.mp4",
-        segmentBetweenBoundsAudioStreams: [],
         segmentBetweenBoundsAudioStreamsVolumeAdjusted: [],
-        segmentBetweenBoundsAudioMergedUselessWAV: "segmentBetweenBoundsMergedAudio.wav",
-        segmentBetweenBoundsAudioMergedWell: "segmentBetweenBoundsMergedAudio.aac",
-        segmentBetweenBoundsLoud: "segmentBetweenBoundsLoud.mp4",
-        segmentBetweenBoundsLoudCompressed: "segmentBetweenBoundsLoudCompressed.mp4",
+        segmentBetweenBoundsCompressed: "segmentBetweenBoundsCompressed.mp4",
     };
     timeline;
 
@@ -86,10 +86,27 @@ export class SnipFix {
         }
     }
 
+    get startTime() {
+        const oneFrameDuration = 1 / this.timeline.frameRate;
+        if (this.timeline.closestKeyframePtsToStartBound > oneFrameDuration) {
+            return this.timeline.closestKeyframePtsToStartBound;
+        } else {
+            return 0;
+        }
+    }
+
+    get endTime() {
+        const oneFrameDuration = 1 / this.timeline.frameRate;
+        if (Math.abs(this.timeline.closestKeyframePtsToEndBound - this.timeline.duration) > oneFrameDuration) {
+            return this.timeline.closestKeyframePtsToEndBound;
+        } else {
+            return Infinity;
+        }
+    }
+
     constructor() {
         this.#ffmpeg = createFFmpeg({ log: false });
         this.#ffmpeg.setLogger(this.#ffmpegLogHandler.bind(this)); // javascript is massive feces
-        this.#crunker = new Crunker(); // TODO: Investigate if sample rate matters here.
         this.#programmableStyleSheet = new CSSStyleSheet();
         document.adoptedStyleSheets.push(this.#programmableStyleSheet);
         this.timeline = new Timeline();
@@ -148,7 +165,14 @@ export class SnipFix {
             console.log("FFmpeg is no longer busy.");
         }
 
-        console.log(`[${typeAndMessage.type}] ` + typeAndMessage.message);
+        if (typeAndMessage.message.includes("Conversion failed!")) {
+            console.error(`[${typeAndMessage.type}] ` + typeAndMessage.message);
+        } else if (typeAndMessage.message.includes("run ffmpeg command")) {
+            console.log("🟠 " + typeAndMessage.message);
+        }
+        else {
+            console.log(`[${typeAndMessage.type}] ` + typeAndMessage.message);
+        }
     }
 
     // Writes a video file to the ffmpeg file system and extracts audio streams into files.
@@ -163,7 +187,7 @@ export class SnipFix {
             const audioBlob = this.fileToBlobURL(this.files.loudInputAudioStreams[i], 'audio/mpeg');
             const newAudioTrack = this.timeline.createMediaTrack(streamName);
             newAudioTrack.mediaElement.src = audioBlob.url;
-            CreateDownloadLink(icons.AUDIO, `${streamName}.aac`, streamName, audioBlob.url, audioBlob.size);
+            CreateDownloadLink(icons.AUDIO, streamName + internalAudioFormat, streamName, audioBlob.url, audioBlob.size);
         }
         await this.silenceLoudInput();
     }
@@ -232,7 +256,7 @@ export class SnipFix {
         await this.#ffmpeg.run('-i', this.files.loudInput, '-vf', "select='eq(pict_type,I)',showinfo", '-f', 'null', "-");
     }
 
-    async #trimSegmentOfMedia(inputFileName, outputFileName, fromTime = 0, toTime = Infinity) {
+    async #trimSegmentOfMedia(inputFileName, outputFileName, fromTime = 0, toTime = Infinity, mapAudioStreams = false) {
         if (this.isBusyProcessing) {
             console.error("Cannot start rendering when busy.");
             return;
@@ -248,48 +272,67 @@ export class SnipFix {
             to = ['-to', toTime.toString()];
         }
 
+        const audioMapFlags = mapAudioStreams ? ["-map", "0:v", "-map", "0:a"] : [];
+
         this.currentTask = tasks.RENDERING;
-        await this.#ffmpeg.run('-i', inputFileName, ...ss, ...to, "-c", "copy", outputFileName);
+        await this.#ffmpeg.run('-i', inputFileName, ...ss, ...to, ...syncingFlags, "-c", "copy", ...audioMapFlags, outputFileName);
     }
 
-    async renderSegmentBetweenBounds() {
-        let endTime = Infinity;
-        const oneFrameDuration = 1 / this.timeline.frameRate;
-        if (Math.abs(this.timeline.closestKeyframePtsToEndBound - this.timeline.duration) > oneFrameDuration) {
-            endTime = this.timeline.closestKeyframePtsToEndBound;
+    async #trimOriginalVideo() {
+        await this.#trimSegmentOfMedia(this.files.loudInput,
+            this.files.segmentBetweenBoundsOfOriginal,
+            this.startTime,
+            this.endTime,
+            true
+        );
+    }
+
+    async #scaleTrimmedOriginalAudioStreams() {
+        let scalingFlags = [];
+        for (let i = 0; i < this.timeline.audioTracks.length; i++) {
+            const track = this.timeline.audioTracks[i];
+            scalingFlags += `-map 0:a:${i} -filter:a:${i} volume=${track.linearGain} `;
         }
+        this.currentTask = tasks.SCALING;
+        const allFlags = (`-map 0:v ` + scalingFlags + `-c:v copy -c:a aac -strict -2`).split(" ");
+        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsOfOriginal, ...allFlags, this.files.segmentBetweenBoundsOfOriginalVolumeAdjusted);
+    }
+
+    async #trimSilentVideo() {
         await this.#trimSegmentOfMedia(this.files.silencedInput,
             this.files.segmentBetweenBoundsSilent,
-            this.timeline.closestKeyframePtsToStartBound,
-            endTime
+            this.startTime,
+            this.endTime
         );
+    }
 
+    async #trimAudioStreams() {
         this.files.segmentBetweenBoundsAudioStreams = []; // Remove discarded audio streams if any from previous cuts.
-
         for (let i = 0; i < this.files.loudInputAudioStreams.length; i++) {
             const audioStreamName = this.files.loudInputAudioStreams[i];
-            const segmentAudioStreamName = respace(audioStreamName.replace(".aac", "") + "BetweenBounds.aac");
+            const segmentAudioStreamName = respace(audioStreamName.replace(internalAudioFormat, "") + "BetweenBounds" + internalAudioFormat);
             this.files.segmentBetweenBoundsAudioStreams.push(segmentAudioStreamName);
 
             await this.#trimSegmentOfMedia(audioStreamName,
                 segmentAudioStreamName,
-                this.timeline.closestKeyframePtsToStartBound,
-                endTime
+                this.startTime,
+                this.endTime
             );
 
             const audioBlob = this.fileToBlobURL(segmentAudioStreamName, 'audio/mpeg');
             this.timeline.audioTracks[i].mediaElement.src = audioBlob.url;
         }
+    }
 
-        await this.#scaleAudioFiles();
-        await this.#createMergedAudioFile();
-        await this.#addAudioStreamsToSegmentBetweenBounds(this.files.segmentBetweenBoundsAudioMergedWell);
+    async renderSegmentBetweenBounds() {
+        await this.#trimOriginalVideo();
+        await this.#scaleTrimmedOriginalAudioStreams();
+        await this.#mergeStreamsInVideoFile(this.files.segmentBetweenBoundsOfOriginalVolumeAdjusted, this.files.segmentBetweenBoundsOfOriginalMerged, this.timeline.audioTracks.length);
     }
 
     CalculateTargetBitrateFromVideoLength() {
-        const endTime = this.timeline.endBound.value / this.timeline.frameRate;
         const startTime = this.timeline.startBound.value / this.timeline.frameRate;
-        const trimmedDuration = endTime - startTime;
+        const trimmedDuration = this.endTime - startTime;
 
         return (64 * 1024 * 1024) / trimmedDuration;
     }
@@ -298,10 +341,10 @@ export class SnipFix {
         this.currentTask = tasks.COMPRESSING;
         const targetBitrate = Math.floor(this.CalculateTargetBitrateFromVideoLength() * 0.95).toString();
 
-        await this.#ffmpeg.run("-i", respace(this.files.segmentBetweenBoundsLoud), "-b:v", targetBitrate,
-            "-maxrate", targetBitrate, respace(this.files.segmentBetweenBoundsLoudCompressed));
+        await this.#ffmpeg.run("-i", respace(this.files.segmentBetweenBoundsOfOriginalMerged), "-b:v", targetBitrate,
+            "-maxrate", targetBitrate, respace(this.files.segmentBetweenBoundsCompressed));
 
-        const compressedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoudCompressed, 'video/mp4');
+        const compressedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsCompressed, 'video/mp4');
         CreateDownloadLink(icons.VIDEO, "Trimmed-compressed.mp4", "Compressed trimmed video (merged audio)", compressedResult.url, compressedResult.size);
     }
 
@@ -312,9 +355,9 @@ export class SnipFix {
         }
 
         this.currentTask = tasks.EXTRACTING;
-        const newAudioStreamFileName = respace(audioFilePrefix + nameForFile + ".aac");
+        const newAudioStreamFileName = respace(audioFilePrefix + nameForFile + internalAudioFormat);
         this.files.loudInputAudioStreams.push(newAudioStreamFileName);
-        await this.#ffmpeg.run("-i", respace(this.files.loudInput), "-filter:a", "loudnorm", "-map", "0:a:" + streamIndex.toString(), /*"-c", "copy",*/ respace(newAudioStreamFileName));
+        await this.#ffmpeg.run("-i", respace(this.files.loudInput), "-map", "0:a:" + streamIndex.toString(), ...syncingFlags, "-c", "copy", respace(newAudioStreamFileName));
     }
 
     // Creates a silent version of the input video file.
@@ -325,14 +368,14 @@ export class SnipFix {
         }
 
         this.currentTask = tasks.REMOVING;
-        await this.#ffmpeg.run("-i", this.files.loudInput, "-c", "copy", "-an", this.files.silencedInput);
+        await this.#ffmpeg.run("-i", this.files.loudInput, ...syncingFlags, "-c", "copy", "-an", this.files.silencedInput);
 
         // Create download link for silent video.
         const silenced = this.fileToBlobURL(this.files.silencedInput, 'video/mp4');
         CreateDownloadLink(icons.VIDEO, 'video-silenced.mp4', 'Silent video', silenced.url, silenced.size);
     }
 
-    async #addAudioStreamsToSegmentBetweenBounds(...audioFileNames) {
+    async #addAudioStreamsToVideo(baseFile, resultFileName, ...audioFileNames) {
         let audioStreamFileNames = "";
         let audioStreamMapFlags = "";
 
@@ -343,7 +386,7 @@ export class SnipFix {
             audioStreamMapFlags += `-map ${(i + 1).toString()}:a:0 `;
         }
 
-        const allFlags = `-i ${this.files.segmentBetweenBoundsSilent} ${audioStreamFileNames}${audioStreamMapFlags}-map 0:v:0 -c copy ${this.files.segmentBetweenBoundsLoud}`.split(" ");
+        const allFlags = (`-i ${baseFile} ${audioStreamFileNames}-c copy ${audioStreamMapFlags}-map 0:v:0 -shortest -fflags +genpts ${resultFileName}`).split(" ");
         this.currentTask = tasks.ADDING_AUDIO;
         await this.#ffmpeg.run(...allFlags);
     }
@@ -354,7 +397,7 @@ export class SnipFix {
             if (correspondingTrack != undefined) {
 
                 const volumeFactor = correspondingTrack.linearGain;
-                const scaledFileName = respace(audioFileName.replace(".aac", "") + "Scaled.aac");
+                const scaledFileName = respace(audioFileName.replace(internalAudioFormat, "") + "Scaled" + internalAudioFormat);
 
                 this.currentTask = tasks.SCALING;
                 await this.#ffmpeg.run("-i", audioFileName, "-filter:a", `volume=${volumeFactor}`, scaledFileName);
@@ -366,34 +409,34 @@ export class SnipFix {
         }
     }
 
-    async #createMergedAudioFile() {
-        const dataOfAudioFiles = [];
-        for (const audioFileName of this.files.segmentBetweenBoundsAudioStreamsVolumeAdjusted) {
-            dataOfAudioFiles.push(this.readMediaFile(audioFileName));
-        }
 
-        const buffers = await Promise.all(
-            Array.from(dataOfAudioFiles).map(async (file) => this.#crunker._context.decodeAudioData(file.buffer))
+    async #mergeStreamsInVideoFile(inVideoFileName, outFileName, numberOfStreams) {
+        this.currentTask = tasks.MERGING;
+        await this.#ffmpeg.run(
+            '-i', inVideoFileName,
+            '-map', '0:v',      // Map all video from input 0
+            '-map', '0:a',      // Map ALL audio from input 0
+            '-c:v', 'copy',     // Copy video codec
+            '-c:a', 'aac',
+            "-ac", "2",
+            "-filter_complex", "amerge=inputs=" + numberOfStreams.toString(),
+            outFileName
         );
-        const merged = await this.#crunker.mergeAudio(buffers);
-        const output = await this.#crunker.export(merged, 'audio/mp3');
-        const uint8Array = await blobToUint8Array(output.blob);
-        await this.#ffmpeg.FS('writeFile', this.files.segmentBetweenBoundsAudioMergedUselessWAV, uint8Array);
-        await this.#ffmpeg.run("-i", this.files.segmentBetweenBoundsAudioMergedUselessWAV, this.files.segmentBetweenBoundsAudioMergedWell);
-        const mergedBlob = this.fileToBlobURL(this.files.segmentBetweenBoundsAudioMergedWell);
-        CreateDownloadLink(icons.AUDIO, "mergedAudio.wav", "Merged audio", mergedBlob.url, mergedBlob.size);
     }
 
     async PerformMainEdit() {
         await this.renderSegmentBetweenBounds();
 
+        const multipleAudioStreams = this.fileToBlobURL(this.files.segmentBetweenBoundsOfOriginalVolumeAdjusted);
+        CreateDownloadLink(icons.VIDEO, 'Multiple-audio-streams.mp4', 'Trimmed video (multiple streams)', multipleAudioStreams.url, multipleAudioStreams.size);
+
+        const mergedOriginalTrimmed = this.fileToBlobURL(this.files.segmentBetweenBoundsOfOriginalMerged);
+        CreateDownloadLink(icons.VIDEO, "Trimmed-merged.mp4", "Trimmed video (single stream)", mergedOriginalTrimmed.url, mergedOriginalTrimmed.size);
+
         this.timeline.removeAllTracks();
-        const trimmedResult = this.fileToBlobURL(this.files.segmentBetweenBoundsLoud);
-        setVideo(trimmedResult.url);
+        setVideo(mergedOriginalTrimmed.url);
 
-        CreateDownloadLink(icons.VIDEO, 'trimmed.mp4', 'Trimmed video (merged audio)', trimmedResult.url, trimmedResult.size);
-
-        if (trimmedResult.size >= 10 * (2 ** 20)) {
+        if (mergedOriginalTrimmed.size >= 10 * (2 ** 20)) {
             await this.#CompressSegmentBetweenBounds();
         }
     }
