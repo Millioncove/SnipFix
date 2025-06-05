@@ -33,10 +33,13 @@ export class Timeline {
 
     get currentTime() { return this.#currentTime; }
     set currentTime(value) {
-        this.#currentTime = parseFloat(value);
+        this.#currentTime = parseFloat(Math.max(0, Math.min(value, this.duration)));
         for (const track of this.allTracks) {
             track.mediaElement.currentTime = this.#currentTime;
         }
+        this.syncPlayheadToMedia();
+        this.keepMediaWithinBounds();
+        this.updateCurrentTimeIndicator();
     }
 
     minutesAndSecond(totalSeconds) {

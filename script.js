@@ -3,9 +3,11 @@ import { SnipFix } from "./SnipFix.js";
 const uploadPage = document.getElementById('UploadPage');
 const editButton = document.getElementById('EditButton');
 const video = document.getElementById("video");
+const videoWrapper = document.getElementById("VideoWrapper");
 const programmableStyleSheet = new CSSStyleSheet();
 const progressBarContainer = document.getElementById('ProgressBarContainer');
 const progressBar = document.getElementById('ProgressBar');
+const arrowSkipTime = 2; // seconds
 document.adoptedStyleSheets.push(programmableStyleSheet);
 
 const snipFix = new SnipFix(programmableStyleSheet);
@@ -37,6 +39,20 @@ export function updateProgress(ratio) {
     progressBarContainer.style.display = (validPercentage == 0 || validPercentage == 100 ? "none" : "inherit");
 }
 
+export function toggleVideoFullscreen() {
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        videoWrapper.requestFullscreen();
+    }
+}
+
+document.onfullscreenchange = () => {
+    video.classList.toggle("video-height", !document.fullscreenElement);
+    document.getElementById("FullscreenButton").classList.toggle("active", !!document.fullscreenElement);
+
+}
+
 // Update the timeline sliders steps.
 video.addEventListener('loadedmetadata', (event) => {
     snipFix.timeline.duration = event.target.duration;
@@ -55,4 +71,30 @@ window.onload = () => {
     snipFix.loadFFmpeg();
     video.load()
     editButton.addEventListener('click', snipFix.PerformMainEdit.bind(snipFix));
+
+    // Fullscreen button click handler
+    document.getElementById('FullscreenButton').onclick = toggleVideoFullscreen;
+
+    // Keyboard controls!
+    document.addEventListener('keydown', function (e) {
+        // Ignore if typing in an input or textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+        if (e.key === 'f' || e.key === 'F') {
+            // 'f' key: toggle fullscreen
+            toggleVideoFullscreen();
+            e.preventDefault();
+        } else if (e.key === ' ') {
+            // Spacebar: play/pause
+            snipFix.timeline.togglePlaying();
+            e.preventDefault();
+        } else if (e.key === 'ArrowLeft') {
+            // Left arrow: skip backward 2 seconds
+            snipFix.timeline.currentTime = snipFix.timeline.currentTime - arrowSkipTime;
+            e.preventDefault();
+        } else if (e.key === 'ArrowRight') {
+            // Right arrow: skip forward 2 seconds
+            snipFix.timeline.currentTime = snipFix.timeline.currentTime + arrowSkipTime;
+            e.preventDefault();
+        }
+    });
 }

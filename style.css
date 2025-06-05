@@ -227,15 +227,47 @@
   #VideoContainer {
     display: flex;
     justify-content: center;
-    padding: 1rem;
+    padding: 0.5rem;
     position: relative;
   }
   
+  #VideoWrapper {
+    position: relative;
+    display: inline-block;
+  }
+  
   #video {
+    display: block;
+    max-width: 100%;
+    height: auto;
     border-radius: var(--radius);
-    max-height: 60vh;
     box-shadow: var(--shadow-lg);
     cursor: pointer;
+  }
+
+  .video-height {
+    max-height: 60vh;
+  }
+  
+  /* Fullscreen Button */
+  #FullscreenButton {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    border: none;
+    background: none;
+    color: white;
+    font-size: 2em;
+    cursor: pointer;
+    z-index: 2;
+    padding: 0;
+    outline: none;
+    transition: color 0.2s;
+    box-shadow: none;
+  }
+  
+  #FullscreenButton:hover {
+    color: var(--secondary);
   }
   
   /* Controls Container */
