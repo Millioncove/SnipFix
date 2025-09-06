@@ -45,6 +45,9 @@ input[type=range]::-moz-range-track {
     color: transparent;
     width: 100%;
 }
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+}
 
 #Volume::-moz-range-thumb {
     border: none;
@@ -57,8 +60,24 @@ input[type=range]::-moz-range-track {
     z-index: 10;
     transition: all 0.2s ease;
 }
+#Volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    border: none;
+    height: 0.2rem;
+    width: 100%;
+    border-radius: 5rem;
+    background: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 10;
+    transition: all 0.2s ease;
+}
 
 #Volume::-moz-range-thumb:hover {
+    background: white; 
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+#Volume::-webkit-slider-thumb:hover {
     background: white; 
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }

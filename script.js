@@ -76,16 +76,19 @@ window.onload = () => {
     document.getElementById('FullscreenButton').onclick = toggleVideoFullscreen;
 
     // Keyboard controls!
-    document.addEventListener('keydown', function (e) {
+    document.addEventListener('keydown', async function (e) {
         // Ignore if typing in an input or textarea
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+        if (e.target.tagName === 'INPUT' && e.target.type === 'text' ||
+            e.target.tagName === 'TEXTAREA' ||
+            e.target.isContentEditable) { return; }
         if (e.key === 'f' || e.key === 'F') {
             // 'f' key: toggle fullscreen
             toggleVideoFullscreen();
             e.preventDefault();
         } else if (e.key === ' ') {
             // Spacebar: play/pause
-            snipFix.timeline.togglePlaying();
+            document.activeElement.blur();
+            await snipFix.timeline.togglePlaying();
             e.preventDefault();
         } else if (e.key === 'ArrowLeft') {
             // Left arrow: skip backward 2 seconds

@@ -143,7 +143,9 @@ export class SnipFix {
 
         // Add functionality to play button(s).
         for (const button of document.getElementsByClassName("play-pause")) {
-            button.addEventListener("click", this.timeline.togglePlaying.bind(this.timeline)); // wtf javascript
+            button.addEventListener("click", async () => {
+                await this.timeline.togglePlaying();
+            });
         }
     }
 

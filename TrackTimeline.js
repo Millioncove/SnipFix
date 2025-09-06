@@ -89,12 +89,14 @@ export class Timeline {
         };
     }
 
-    play() {
+    async play() {
         if (this.allTracks.length <= 0) { console.warn("Cannot play media if there are no tracks!"); return; }
+
+        let playPromises = [];
 
         for (const track of this.allTracks) {
             track.mediaElement.currentTime = this.#currentTime;
-            track.mediaElement.play();
+            playPromises.push(track.mediaElement.play());
         }
         this.#videoUpdateIntervalID = setInterval(() => {
             // TODO: Investigate if more fidelity in time domain can be achieved by
@@ -105,11 +107,17 @@ export class Timeline {
             this.keepMediaWithinBounds();
         }, 1.0 / this.frameRate);
 
-        this.isPlaying = true;
+        await Promise.all(playPromises).catch((error) => {
+            console.error("Error while trying to play media:", error);
+        }).then(() => {
+            this.isPlaying = true;
+        });
     }
 
     pause() {
         if (this.allTracks.length <= 0) { console.warn("Cannot pause media if there are no tracks!"); return; }
+
+        this.isPlaying = false;
 
         for (const track of this.allTracks) {
             track.mediaElement.pause();
@@ -117,17 +125,15 @@ export class Timeline {
 
         clearInterval(this.#videoUpdateIntervalID);
         this.#videoUpdateIntervalID = null;
-
-        this.isPlaying = false;
     }
 
-    togglePlaying() {
+    async togglePlaying() {
         if (this.allTracks.length <= 0) { console.warn("Cannot play media if there are no tracks!"); return; }
 
         if (this.videoTrack.mediaElement.ended || this.currentFrameIndex == this.endBound.value) {
             this.currentFrameIndex = this.startBound.value;
         }
-        if (!this.isPlaying) { this.play(); }
+        if (!this.isPlaying) { await this.play(); }
         else { this.pause(); }
     }
 
@@ -225,6 +231,7 @@ export class Timeline {
         }
         if (this.#currentTime < clipStartTime) {
             this.currentFrameIndex = this.startBound.value;
+            this.pause();
         }
         this.updateCurrentTimeIndicator();
         this.colorizeAllClips();

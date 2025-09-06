@@ -54,7 +54,7 @@ export class MediaTrack extends HTMLElement {
 
         // Register event handler for volume slider.
         this.shadowRoot.querySelector("#Volume").oninput = (slider) => {
-            this.volumePercentage = slider.originalTarget.value;
+            this.volumePercentage = slider.target.value;
             this.linearGain = this.#gainCurve(this.volumePercentage);
         };
     }
